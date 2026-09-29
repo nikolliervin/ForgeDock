@@ -244,7 +244,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         Directory.CreateDirectory(routes);
         var route = Path.Combine(routes, $"{project.Id:N}.conf");
         var previous = File.Exists(route) ? await File.ReadAllTextAsync(route, ct) : null;
-        var content = $"server {{ listen 80; server_name {project.Id:N}.localhost; location / {{ proxy_pass http://{container}:{snapshot.ContainerPort}; proxy_set_header Host $host; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; }} }}";
+        var content = $"server {{ listen 80; server_name {project.Id:N}.localhost; location / {{ proxy_pass http://{container}:{snapshot.ContainerPort}; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Host $http_host; proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; }} }}";
         await File.WriteAllTextAsync(route + ".tmp", content, ct);
         File.Move(route + ".tmp", route, overwrite: true);
         try

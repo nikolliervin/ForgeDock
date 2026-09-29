@@ -174,5 +174,5 @@ public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State,
 {
     public static DeploymentResponse From(Deployment d) => new(d.Id, d.ProjectId, d.State, d.CreatedAt,
         d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId,
-        System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? []);
+        string.IsNullOrWhiteSpace(d.ServiceStatusJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? []);
 }
