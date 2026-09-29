@@ -32,4 +32,4 @@ Run `bash scripts/install-compose.sh` if `docker compose` is unavailable. It dow
 
 ## Verification status
 
-Configuration and normalization tests pass. End-to-end stack verification is in progress; consult MVP_VERIFICATION.md for completed runtime scenarios.
+The opt-in Docker integration test passed: two healthy services, built versions 1 and 2, actual changed-page rollback, Redis data retention across redeploy/rollback/restart, failed startup followed by restoration, scoped deletion retaining the named volume, and temporary file cleanup. The public WordPress/MariaDB stack also reached Running through the Git/API worker path and returned HTTP 200 through nginx. Further browser and API lifecycle checks are being recorded in MVP_VERIFICATION.md.

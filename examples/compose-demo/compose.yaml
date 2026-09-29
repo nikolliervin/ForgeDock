@@ -1,0 +1,25 @@
+services:
+  web:
+    build: ./web
+    environment:
+      DEMO_LABEL: ${DEMO_LABEL:-Compose demo}
+    depends_on:
+      store:
+        condition: service_healthy
+    ports: ["3000:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  store:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+volumes:
+  data:

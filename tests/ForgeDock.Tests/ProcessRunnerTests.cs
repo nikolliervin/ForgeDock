@@ -6,6 +6,14 @@ namespace ForgeDock.Tests;
 public class ProcessRunnerTests
 {
     [Fact]
+    public async Task MachineReadableOutputExcludesStderrAndPlatformSecrets()
+    {
+        var result = await new ProcessRunner().RunAsync("/bin/sh", ["-c", "printf '%s' \"${ForgeDock__ApiToken-unset}\"; printf 'warning\\n' >&2"],
+            null, _ => Task.CompletedTask, CancellationToken.None, inheritEnvironment: false);
+        Assert.Equal("unset", result);
+    }
+
+    [Fact]
     public async Task ArgumentsArePassedLiterallyWithoutShellEvaluation()
     {
         var runner = new ProcessRunner();

@@ -21,6 +21,8 @@ Backend/frontend builds pass. Fourteen focused lifecycle/validation/encryption/p
 
 The main workflow is demonstrable. The complete system prompt's hardened definition of done is not claimed.
 
-## Compose support in progress
+## Compose support
 
-Project configuration and deployment snapshots now distinguish Dockerfile and Compose deployments, including Compose file path and routed service. Existing snapshots default to Dockerfile mode. The Compose execution strategy and dashboard controls are the next implementation milestones; Compose deployment is not yet available end to end.
+Compose projects select a repository-relative file and routed service. The worker builds local service contexts, retains encrypted manifests/immutable images, starts dependent services, checks HTTP/service health, and records service-prefixed logs/status. Stop/restart/delete and rollback share the owned stack lifecycle; named volumes survive deployment changes and project deletion. The dashboard configures Compose mode and shows each service.
+
+Thirty unit tests and one opt-in real Docker integration test pass. The integration test proves visibly different-version rollback and Redis persistence. A public WordPress/MariaDB stack also deployed through the API and serves its UI through nginx. See COMPOSE.md and MVP_VERIFICATION.md for supported features and limitations.
