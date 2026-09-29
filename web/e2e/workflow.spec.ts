@@ -30,7 +30,36 @@ test('operator creates, configures, deploys and inspects a real service', async 
   expect(deployed.status()).toBe(200);
   expect(await deployed.text()).toContain('<html');
   await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/dashboard.png`, fullPage: true });
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  await expect(page.locator('.route small')).toContainText('Stopped', { timeout: 15000 });
+  const [restartResponse] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/restart') && response.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Restart', exact: true }).click(),
+  ]);
+  expect(restartResponse.status()).toBe(202);
+  const restart = await restartResponse.json();
+  await expect(page.locator(`[data-deployment-id="${restart.id}"] .status`)).toHaveText('Running', { timeout: 30000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Delete project', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByLabel('Management token')).toBeVisible();
   await expect(page.getByLabel('Management token')).toHaveValue('');
+});
+
+
+test('dashboard remains usable on a narrow viewport', async ({ page }) => {
+  const token = process.env.ForgeDock__ApiToken;
+  if (!token) throw new Error('Load the management token with scripts/with-env.sh.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByLabel('Management token').fill(token);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Docker welcome demo', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Docker welcome demo', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/dashboard-mobile.png`, fullPage: true });
 });

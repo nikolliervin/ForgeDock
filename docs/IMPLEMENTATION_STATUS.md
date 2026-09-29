@@ -1,20 +1,22 @@
 # Implementation status
 
-## Implemented
+## Demonstrable vertical slice
 
-- .NET 10 domain lifecycle and configuration validation.
-- PostgreSQL EF migrations, projects, deployment snapshots/history, and durable logs.
-- Bearer-authenticated REST API with project configuration, deploy, rollback, environment variables, health endpoints, and OpenAPI.
-- AES-GCM environment storage and temporary mode-0600 runtime env files.
-- Serial worker with PostgreSQL ownership lock, interrupted-deployment handling, Git clone, Docker build/start, HTTP health checks, nginx route generation/reload, and retained-image rollback.
-- Recurring health checks and bounded container-log collection.
-- React dashboard connected to the API, project settings/environment editor, deployment progress/history/logs, and rollback confirmation.
-- Startup automation and a Dockerfile demo fixture.
+Real authenticated UI/API project creation → public Git clone → Docker image build → constrained container start → HTTP health probe → nginx route switch → HTTP 200 application response → persisted logs/history → redeploy → retained-image rollback has been executed on Fedora. Restarted API/worker processes preserve history and application routing.
+
+The dashboard includes settings, encrypted write-only environment editing, deployment history/progress/logs, live health status, restart, confirmed stop, and confirmed project deletion. Built assets are served by the API at port 5080; Vite remains available at 5173 for development.
 
 ## Verification
 
-Backend and frontend builds pass. Lifecycle/validation/encryption tests pass. PostgreSQL/nginx start and EF migrations apply in Fedora. First real public-repository deployment is under verification. See MVP_VERIFICATION.md for current acceptance results.
+Backend/frontend builds pass. Fourteen focused lifecycle/validation/encryption/process-execution tests pass. Two browser tests against the built frontend passed, including narrow-viewport layout and the workflow through login, project creation, secret editor, actual deployment, logs, routed response, stop, restart, deletion, and logout. EF migrations apply and the model has no pending changes. Anonymous API access is rejected, unsafe URLs are rejected, missing Dockerfile fails without replacing the active route, and encrypted variables reach Docker without appearing in persisted deployment logs. See MVP_VERIFICATION.md.
 
-## Remaining acceptance work
+## Known limitations / remaining hardening
 
-Prove real routed deployment, redeploy, rollback, variable handling, and restart persistence. Add workflow/API failure tests, production frontend packaging, stop/delete lifecycle controls, stronger SSRF defenses, crash-time reconciliation, cleanup/retention, and browser interaction verification. The full prompt's definition of done has not yet been met.
+- Rollback verification reused the original image and switched the real upstream, but the tested upstream repository version was the same commit; a changed-content two-version test remains.
+- Crash-time nginx/database reconciliation and stronger execution fencing/concurrent lifecycle locking are not complete.
+- Application monitoring/log collection shares the serial deployment worker and pauses during builds.
+- Source/image/log retention and cleanup automation are absent; deleting a project removes its containers, route, and DB history but retains images/source directories.
+- Single trusted operator only; no custom domains/TLS, private Git credentials, hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
+- Git hostname checks do not fully address DNS rebinding/private-address resolution; restrict worker egress for untrusted inputs.
+
+The main workflow is demonstrable. The complete system prompt's hardened definition of done is not claimed.

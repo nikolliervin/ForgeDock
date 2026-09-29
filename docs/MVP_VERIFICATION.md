@@ -1,9 +1,62 @@
 # MVP verification
 
-Environment: Fedora 44, Linux x64; .NET SDK 10.0.112/runtime 10.0.12; Node 22.23.1; npm 10.9.8; Git 2.55.0; Docker 29.7.2.
+Environment: Fedora 44, Linux x64; .NET SDK 10.0.112/runtime 10.0.12; Node 22.23.1; npm 10.9.8; Git 2.55.0; Docker 29.7.2. Local verification date: 2026-09-30.
 
-Commands completed: `dotnet build ForgeDock.sln`, `dotnet test ForgeDock.sln`, `npm --prefix web install`, `npm --prefix web run build`, `bash -n scripts/*.sh`, `bash scripts/init-local.sh`, `bash scripts/start-infra.sh`, `make migrate`.
+## Reproduction commands
 
-Results: backend builds with no warnings/errors; frontend type-check and production build pass; 12 tests pass (including one original scaffold test to be replaced); npm audit reports no vulnerabilities. Docker initially had no socket; starting its installed service enabled PostgreSQL/nginx verification. Compose plugin is absent; CLI startup scripts work. All three EF migrations applied to a new PostgreSQL database. API and worker run against the database; a public Docker demo project was created and queued through the authenticated API. Dashboard is running at port 5173.
+```bash
+make init
+make infra
+make migrate
+npm --prefix web ci
+npm exec --prefix web -- playwright install chromium
+# Separate terminals:
+make api
+make worker
+# Built dashboard at port 5080; optional Vite development UI:
+make web
+make build
+make test
+FORGEDOCK_TEST_URL=http://127.0.0.1:5080 make e2e
+```
 
-Pending: routed deployment completion, actual application response, redeployment/rollback, secrets delivery/redaction, failed deployment behavior, component restart durability, and browser interaction verification. No claim of complete MVP acceptance is made until these scenarios are executed and recorded.
+The browser suite's narrow-viewport scenario expects the retained `Docker welcome demo` acceptance project. Create it through the UI using the repository/settings below before running the suite. Its main workflow creates and deletes a separate temporary demo project.
+
+## Results
+
+| Scenario | Result |
+| --- | --- |
+| Backend build | Pass, zero warnings/errors |
+| Frontend TypeScript/production build | Pass |
+| Unit tests | 14 pass, including literal arguments, failure output, and cancellation; scaffold-only test removed |
+| npm dependency audit | Zero reported vulnerabilities |
+| PostgreSQL/nginx startup | Pass using CLI scripts |
+| EF migrations on a new database | Pass; subsequent operation migration also applied |
+| EF pending-model check | No pending changes |
+| Token login and anonymous rejection | Pass; unauthenticated management returns 401 |
+| Unsafe Git URL | Rejected with 400 |
+| Project configuration / immutable queued snapshot | Missing-Dockerfile snapshot still failed after settings were restored |
+| Public Git retrieval and Docker build | Pass |
+| Container start / HTTP health | Pass |
+| nginx application routing | HTTP 200 and expected HTML |
+| Deployment logs | 178 initial persisted rows returned through API |
+| Redeploy | New container running; previous deployment stopped |
+| Rollback | Retained original image used by new container; active deployment changed; routed HTTP 200 |
+| Environment API | Returns names only; values never returned |
+| Environment delivery | Actual container metadata contained the configured test value |
+| Deployment log secret exposure | Test value absent from stored deployment logs |
+| Missing Dockerfile | Failed with actionable error; existing active route preserved |
+| API/worker restart | History/status preserved; application continued returning HTTP 200 |
+| Browser interaction | Pass: login/create/environment/deploy/logs/application response/stop/restart/delete/logout |
+| Narrow-viewport layout | Pass at 390px width, no horizontal overflow |
+| Built frontend serving | API port 5080 serves dashboard; browser test passed against it |
+
+Representative repository: `https://github.com/docker/welcome-to-docker.git`, branch `main`, root Dockerfile, container port `3000`, health path `/`. Recorded commit: `68c1b9f87c41fb3fef2667e27149865c2f42d1eb`. First verification project ID: `f9ec4147-2118-4cc2-9c93-94faf33fe17c`; routed host `f9ec414721184cc29c9394faf33fe17c.localhost:8088`.
+
+The API/worker were gracefully stopped and restarted while Docker applications continued running. No database was recreated. All five recorded deployment histories remained available with expected terminal/current states.
+
+Docker initially had no socket; starting the installed service resolved this. The Compose plugin is absent; `make infra` uses Docker CLI. Playwright used its Ubuntu fallback Chromium build on Fedora and passed.
+
+## Limits of evidence
+
+Rollback was verified against a retained image from the same upstream commit; the actual upstream/container switch is proven, but a changed-page two-version test remains. Unclean crash during route switching, Docker daemon restart, exhaustive DB failure recovery, distributed worker fencing, concurrent management requests, and production remote TLS exposure were not tested. Periodic logs are bounded polling and do not guarantee complete delivery. See SECURITY.md and IMPLEMENTATION_STATUS.md before public exposure.

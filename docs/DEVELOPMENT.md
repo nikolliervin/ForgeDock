@@ -25,3 +25,5 @@ bash scripts/with-env.sh dotnet ef migrations has-pending-model-changes --projec
 ```
 
 Do not commit `.env`, `.runtime`, private AI prompts, or generated build output. PostgreSQL data lives in the owned `forgedock-postgres-data` volume. Application images/containers are intentionally retained. Stop platform processes with Ctrl+C; stop infrastructure explicitly with `docker stop forgedock-proxy forgedock-postgres`. Do not remove the database volume unless intentionally deleting all history.
+
+Browser verification uses Playwright. Install its browser with `npm exec --prefix web -- playwright install chromium`, then run `make e2e` with the platform running. To verify built frontend hosting, use `FORGEDOCK_TEST_URL=http://127.0.0.1:5080 make e2e`. The workflow creates a demo project, deploys it, stops/restarts it, and deletes it; it requires network access to the public demo repository and registry. The narrow-viewport check expects the retained `Docker welcome demo` project from initial acceptance setup. Screenshots are private runtime artifacts.

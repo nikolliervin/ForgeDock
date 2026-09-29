@@ -24,7 +24,7 @@ flowchart LR
 - `src/ForgeDock.Api`: authenticated management endpoints and response DTOs. Depends on Infrastructure.
 - `src/ForgeDock.Worker`: queue ownership, Git/build/start/health/route orchestration, application monitoring. Depends on Infrastructure.
 - `web`: React/TypeScript dashboard, Vite development proxy, CSS design system.
-- `tests`: lifecycle, validation, and cryptographic behavior tests.
+- `tests`: lifecycle, validation, and cryptographic behavior tests. `web/e2e` exercises the actual browser deployment workflow with Playwright.
 - `scripts`: private local credential initialization, infrastructure startup, environment loader.
 - `examples/demo`: minimal nginx application fixture with a Dockerfile.
 - `docs`: permanent maintainer knowledge and verification reports.
@@ -43,6 +43,7 @@ EF migrations live in Infrastructure and are applied explicitly through the API 
 erDiagram
     Project ||--o{ Deployment : owns
     Project ||--o{ ProjectEnvironment : configures
+    Project |o..o{ ProjectOperation : schedules
     Deployment ||--o{ DeploymentLog : records
     Project {
         uuid Id PK
@@ -65,6 +66,13 @@ erDiagram
         uuid ProjectId FK
         string Name PK
         string ProtectedValue
+    }
+    ProjectOperation {
+        uuid Id PK
+        uuid ProjectId
+        string Kind
+        string State
+        string Error
     }
     DeploymentLog {
         bigint Id PK
@@ -125,13 +133,13 @@ stateDiagram-v2
     Running --> Failed
 ```
 
-Failures require a reason. Failed and Stopped deployments are terminal; retry creates a new deployment. There is no user cancellation endpoint. Worker cancellation interrupts processes; on restart, interrupted nonterminal deployments become Failed with a redeploy instruction. Recovery does not reconcile nginx and database after a crash during route switching; this remains a hardening requirement.
+Failures require a reason. Failed and Stopped deployments are terminal; retry creates a new deployment. There is no user cancellation endpoint. Stop/delete operations have Queued, Running, Completed, and Failed states in a durable operations table; they share the serial worker with deployments. Operations refuse to schedule while deployment work is pending for that project. The operation row survives project deletion and is available through `/api/operations/{id}`. Scheduling prechecks are not transactional fencing, so concurrent management requests still need stronger locking. Worker cancellation interrupts processes; on restart, interrupted nonterminal deployments become Failed with a redeploy instruction. Recovery does not reconcile nginx and database after a crash during route switching; this remains a hardening requirement.
 
 ## Docker
 
 Processes use `ProcessStartInfo.ArgumentList`, never shell interpolation. Git prompts, redirects, and alternate protocols are disabled. Docker labels use `io.forgedock.managed`, `io.forgedock.project`, and `io.forgedock.deployment`. Images use `forgedock/<project-id>:<deployment-id>`. Containers use `forgedock-<deployment-id>` and attach to the dedicated `forgedock` network. Applications do not publish host ports. Containers have memory/CPU/PID limits, drop capabilities, and use no-new-privileges. They inherit the image user; arbitrary Docker builds are not sandboxed securely against a hostile tenant.
 
-The old container's deployment ownership label is checked before stopping it. Images and stopped/failed containers are retained; automatic cleanup is not implemented. No unrelated containers are enumerated for deletion.
+The old container's deployment ownership label is checked before stopping it. Images and stopped/failed containers are retained; automatic retention cleanup is not implemented. No unrelated containers are enumerated for deletion. Project deletion checks recorded container names and deployment ownership labels, stops/removes those containers, removes the route, and deletes the project with cascading deployment/log/environment rows. Images and source directories remain retained.
 
 ## Networking
 
@@ -157,4 +165,4 @@ Configuration comes from environment variables loaded by the scripts. `Connectio
 
 ## Decisions, limitations, and evolution
 
-See [ADRs](adr/001-single-host-architecture.md) and [implementation status](IMPLEMENTATION_STATUS.md). Planned improvements include deployment crash reconciliation/fencing, retention and cleanup, API/workflow test breadth, deep-link routing, stop/delete controls, hardened Git egress, isolated builds, packaged production service supervision, TLS/custom domains, private repositories, and independent monitoring. None is represented as already available.
+See [ADRs](adr/001-single-host-architecture.md) and [implementation status](IMPLEMENTATION_STATUS.md). Planned improvements include deployment crash reconciliation/fencing, retention and cleanup, API/workflow test breadth, deep-link routing, hardened Git egress, isolated builds, packaged production service supervision, TLS/custom domains, private repositories, and independent monitoring. None is represented as already available.

@@ -12,3 +12,5 @@
 - **Worker refuses to start:** Only one worker may hold the PostgreSQL advisory lock. Stop the existing worker before starting another.
 - **Interrupted deployment:** Restart marks it Failed. Inspect labeled containers and routes before redeploying; automatic crash-time reconciliation is incomplete.
 - **Encrypted variables cannot be read:** API/worker must share the original `ForgeDock__SecretKey`. Restore the key from backup; rotating it without re-encryption does not preserve historical values.
+
+- **Lifecycle browser checks act before restart completes:** Wait for the new deployment ID returned by the restart request. An older Running row can remain visible briefly while polling catches up. The acceptance test uses the new row's ID, and dashboard polling preserves actionable errors until explicitly dismissed or another action starts.

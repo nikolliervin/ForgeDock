@@ -1,4 +1,4 @@
-.PHONY: init infra migrate api worker web test build
+.PHONY: init infra migrate api worker web test build e2e
 init:
 	bash scripts/init-local.sh
 infra:
@@ -19,3 +19,6 @@ build:
 test:
 	dotnet test ForgeDock.sln
 	npm --prefix web run check
+
+e2e:
+	bash scripts/with-env.sh npm --prefix web run test:e2e
