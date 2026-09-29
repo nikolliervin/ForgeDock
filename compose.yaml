@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: forgedock-postgres
+    labels:
+      io.forgedock.managed: "true"
+    environment:
+      POSTGRES_USER: forgedock
+      POSTGRES_DB: forgedock
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [forgedock]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgedock -d forgedock"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  proxy:
+    image: nginx:alpine
+    container_name: forgedock-proxy
+    labels:
+      io.forgedock.managed: "true"
+    ports:
+      - "127.0.0.1:8088:80"
+    volumes:
+      - ./.runtime/routes:/etc/nginx/conf.d:ro,z
+    networks: [forgedock]
+volumes:
+  postgres-data:
+    name: forgedock-postgres-data
+    labels:
+      io.forgedock.managed: "true"
+networks:
+  forgedock:
+    name: forgedock
+    labels:
+      io.forgedock.managed: "true"
