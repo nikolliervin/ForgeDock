@@ -5,7 +5,7 @@ using Npgsql;
 
 namespace ForgeDock.Worker;
 
-public sealed class Worker(IServiceScopeFactory scopes, IConfiguration configuration,
+public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration configuration,
     ProcessRunner runner, SecretProtector protector, ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -82,9 +82,22 @@ public sealed class Worker(IServiceScopeFactory scopes, IConfiguration configura
         try { await Run("exec", proxy, "nginx", "-t"); await Run("exec", proxy, "nginx", "-s", "reload"); }
         catch { if (previous is not null) await File.WriteAllTextAsync(route, previous, CancellationToken.None); throw; }
         var deployments = await db.Deployments.Where(d => d.ProjectId == project.Id).ToListAsync(ct);
+        var compose = operation.Kind == ProjectOperationKind.Delete
+            ? deployments.OrderByDescending(d => d.CreatedAt).FirstOrDefault(d => d.ProtectedComposeManifest != null)
+            : deployments.FirstOrDefault(d => d.Id == project.ActiveDeploymentId && d.ProtectedComposeManifest != null);
+        if (compose?.ProtectedComposeManifest is { } protectedManifest)
+            await ComposeEngine.StopAsync(ReadCompose(protectedManifest), project.Id, operation.Kind == ProjectOperationKind.Delete,
+                _ => Task.CompletedTask, ct);
         foreach (var deployment in deployments.Where(d => d.ContainerId != null &&
             (operation.Kind == ProjectOperationKind.Delete || d.Id == project.ActiveDeploymentId)))
         {
+            if (DeploymentSnapshot.Deserialize(deployment.ConfigurationJson).DeploymentMode == DeploymentMode.Compose)
+            {
+                if (deployment.State == DeploymentState.Running) deployment.TransitionTo(DeploymentState.Stopped);
+                deployment.ServiceStatusJson = System.Text.Json.JsonSerializer.Serialize(
+                    System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(deployment.ServiceStatusJson)!.Select(s => s with { State = "stopped" }));
+                continue;
+            }
             var name = deployment.ContainerId!;
             var existing = await Run("ps", "-a", "--filter", $"name=^{name}$", "--format", "{{.Names}}");
             if (!existing.Split('\n').Contains(name)) continue;
@@ -109,6 +122,11 @@ public sealed class Worker(IServiceScopeFactory scopes, IConfiguration configura
             var deployment = await db.Deployments.FindAsync([project.ActiveDeploymentId!.Value], ct);
             if (deployment?.ContainerId is not { } container) continue;
             var snapshot = DeploymentSnapshot.Deserialize(deployment.ConfigurationJson);
+            if (snapshot.DeploymentMode == DeploymentMode.Compose)
+            {
+                await MonitorCompose(db, project, deployment, snapshot, ct);
+                continue;
+            }
             async Task Log(string line)
             {
                 foreach (var secret in snapshot.ProtectedEnvironment.Values.Select(protector.Unprotect).Where(v => v.Length > 0))
@@ -139,6 +157,11 @@ public sealed class Worker(IServiceScopeFactory scopes, IConfiguration configura
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("The deployment worker requires Linux.");
         var project = await db.Projects.SingleAsync(p => p.Id == deployment.ProjectId, ct);
         var snapshot = DeploymentSnapshot.Deserialize(deployment.ConfigurationJson);
+        if (snapshot.DeploymentMode == DeploymentMode.Compose)
+        {
+            await ExecuteComposeDeployment(db, deployment, project, snapshot, ct);
+            return;
+        }
         var validation = ForgeDock.Application.ProjectConfiguration.Validate(project.Name, snapshot.RepositoryUrl,
             snapshot.Branch, snapshot.Dockerfile, snapshot.ContainerPort, snapshot.HealthPath);
         if (validation.Count > 0) throw new InvalidOperationException(string.Join(" ", validation));
@@ -244,6 +267,13 @@ public sealed class Worker(IServiceScopeFactory scopes, IConfiguration configura
         {
             try
             {
+                if (old.ProtectedComposeManifest is { } oldManifest)
+                {
+                    await ComposeEngine.StopAsync(ReadCompose(oldManifest), project.Id, false, Log, ct);
+                    if (old.State == DeploymentState.Running) old.TransitionTo(DeploymentState.Stopped);
+                    await db.SaveChangesAsync(ct);
+                    return;
+                }
                 var label = await Run("docker", "inspect", "--format", "{{index .Config.Labels \"io.forgedock.deployment\"}}", oldContainer);
                 if (label != old.Id.ToString()) throw new InvalidOperationException("Old container ownership label does not match.");
                 await Run("docker", "stop", oldContainer);

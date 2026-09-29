@@ -2,7 +2,7 @@
 
 ## System overview
 
-ForgeDock targets one trusted operator on one Linux host. Public HTTPS Git repositories with Dockerfiles are deployed to Docker containers. PostgreSQL is the source of truth. A React browser UI uses bearer-authenticated REST endpoints; a separate .NET worker consumes persisted queued deployments. nginx serves application routes. This is an early MVP implementation; see the verification report for actual tested capabilities.
+ForgeDock targets one trusted operator on one Linux host. Public HTTPS Git repositories can select Dockerfile deployment or a Compose stack with one routed service. See [Compose deployment architecture](COMPOSE.md) for stack resource ownership, persistent data, encrypted manifest retention, and lifecycle semantics. PostgreSQL is the source of truth. A React browser UI uses bearer-authenticated REST endpoints; a separate .NET worker consumes persisted queued deployments. nginx serves application routes. This is an early MVP implementation; see the verification report for actual tested capabilities.
 
 ```mermaid
 flowchart LR
