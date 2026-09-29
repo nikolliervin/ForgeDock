@@ -1,0 +1,36 @@
+import { test, expect } from '@playwright/test';
+
+test('operator creates, configures, deploys and inspects a real service', async ({ page }) => {
+  const token = process.env.ForgeDock__ApiToken;
+  if (!token) throw new Error('Run through scripts/with-env.sh to load the management token.');
+  await page.goto('/');
+  await page.getByLabel('Management token').fill(token);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'New project', exact: true }).click();
+  const name = `Browser demo ${Date.now()}`;
+  await page.getByLabel('Project name').fill(name);
+  await page.getByLabel('Repository URL').fill('https://github.com/docker/welcome-to-docker.git');
+  await page.getByLabel('Container port').fill('3000');
+  await page.locator('main').getByRole('button', { name: 'Create project', exact: true }).click();
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Environment', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('BROWSER_TEST');
+  await page.getByLabel('Value', { exact: true }).fill('test-value-no-real-secret');
+  await page.getByRole('button', { name: 'Save variable', exact: true }).click();
+  await expect(page.getByText('BROWSER_TEST', { exact: true })).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('test-value-no-real-secret');
+  await page.getByRole('button', { name: 'Deployments', exact: true }).click();
+  await page.getByRole('button', { name: 'Deploy', exact: true }).click();
+  await expect(page.locator('.history .status').first()).toHaveText('Running', { timeout: 100000 });
+  await expect(page.getByLabel('Deployment logs')).toContainText('Stage: Running', { timeout: 10000 });
+  const url = await page.locator('.route a').getAttribute('href');
+  expect(url).toBeTruthy();
+  const deployed = await page.context().request.get(url!);
+  expect(deployed.status()).toBe(200);
+  expect(await deployed.text()).toContain('<html');
+  await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/dashboard.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByLabel('Management token')).toBeVisible();
+  await expect(page.getByLabel('Management token')).toHaveValue('');
+});
