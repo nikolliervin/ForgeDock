@@ -3,3 +3,5 @@
 .tabs{display:flex;gap:8px;margin-bottom:24px}.variable{display:flex;gap:15px;align-items:center;border-bottom:1px solid #29313f;padding:12px 0;margin-bottom:15px;font-size:12px}.variable button{margin-left:auto}
 
 .danger{background:#74313d;border-color:#934454}hr{border:0;border-top:1px solid #29313f;margin:28px 0}
+
+select{font:inherit;background:#0a1018;border:1px solid #354054;border-radius:5px;padding:12px;color:#e7eaf0;width:100%}.services{border-collapse:collapse;width:100%;font-size:12px;margin-bottom:24px}.services th,.services td{text-align:left;padding:10px 8px;border-bottom:1px solid #29313f}.services th{color:#929dac;font-weight:500}
