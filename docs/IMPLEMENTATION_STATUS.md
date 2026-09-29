@@ -20,3 +20,7 @@ Backend/frontend builds pass. Fourteen focused lifecycle/validation/encryption/p
 - Git hostname checks do not fully address DNS rebinding/private-address resolution; restrict worker egress for untrusted inputs.
 
 The main workflow is demonstrable. The complete system prompt's hardened definition of done is not claimed.
+
+## Compose support in progress
+
+Project configuration and deployment snapshots now distinguish Dockerfile and Compose deployments, including Compose file path and routed service. Existing snapshots default to Dockerfile mode. The Compose execution strategy and dashboard controls are the next implementation milestones; Compose deployment is not yet available end to end.

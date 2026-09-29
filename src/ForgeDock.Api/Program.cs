@@ -41,12 +41,13 @@ var api = app.MapGroup("/api").RequireAuthorization();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(
-        p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus)).ToListAsync(ct));
+        p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService)).ToListAsync(ct));
 api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, CancellationToken ct) =>
 {
     var errors = request.Validate();
     if (errors.Count > 0) return Results.ValidationProblem(new Dictionary<string, string[]> { ["configuration"] = errors.ToArray() });
     var project = new Project { Name = request.Name, RepositoryUrl = request.RepositoryUrl, Branch = request.Branch,
+        DeploymentMode = request.DeploymentMode, ComposeFile = request.ComposeFile, ComposeService = request.ComposeService,
         Dockerfile = request.Dockerfile, ContainerPort = request.ContainerPort, HealthPath = request.HealthPath };
     db.Projects.Add(project);
     await db.SaveChangesAsync(ct);
@@ -62,6 +63,7 @@ api.MapPut("/projects/{id:guid}", async (Guid id, ProjectRequest request, ForgeD
     var project = await db.Projects.FindAsync([id], ct);
     if (project is null) return Results.NotFound();
     project.Name = request.Name; project.RepositoryUrl = request.RepositoryUrl; project.Branch = request.Branch;
+    project.DeploymentMode = request.DeploymentMode; project.ComposeFile = request.ComposeFile; project.ComposeService = request.ComposeService;
     project.Dockerfile = request.Dockerfile; project.ContainerPort = request.ContainerPort; project.HealthPath = request.HealthPath;
     await db.SaveChangesAsync(ct);
     return Results.Ok(ProjectResponse.From(project));
@@ -96,7 +98,7 @@ api.MapPost("/deployments/{id:guid}/rollback", async (Guid id, ForgeDockDbContex
     if (await db.Operations.AnyAsync(o => o.ProjectId == source.ProjectId && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
         return Results.Conflict(new { error = "Wait for the pending project operation." });
     var deployment = new Deployment { ProjectId = source.ProjectId, RollbackSourceId = source.Id,
-        ImageTag = source.ImageTag, CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson };
+        ImageTag = source.ImageTag, CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
     db.Deployments.Add(deployment);
     await db.SaveChangesAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
@@ -110,7 +112,7 @@ api.MapPost("/projects/{id:guid}/restart", async (Guid id, ForgeDockDbContext db
     var source = await db.Deployments.FindAsync([active], ct);
     if (source?.ImageTag is null) return Results.Conflict(new { error = "Active image is unavailable." });
     var deployment = new Deployment { ProjectId = id, RollbackSourceId = source.Id, ImageTag = source.ImageTag,
-        CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson };
+        CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
     db.Deployments.Add(deployment); await db.SaveChangesAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
@@ -154,20 +156,23 @@ public record EnvironmentRequest(string Value);
 public record OperationRequest(ProjectOperationKind Kind);
 
 public record ProjectRequest(string Name, string RepositoryUrl, string Branch = "main", string Dockerfile = "Dockerfile",
-    int ContainerPort = 8080, string HealthPath = "/")
+    int ContainerPort = 8080, string HealthPath = "/", DeploymentMode DeploymentMode = DeploymentMode.Dockerfile,
+    string ComposeFile = "docker-compose.yml", string ComposeService = "")
 {
     public IReadOnlyList<string> Validate() => ProjectConfiguration.Validate(Name ?? "", RepositoryUrl ?? "", Branch ?? "",
-        Dockerfile ?? "", ContainerPort, HealthPath ?? "");
+        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "");
 }
 public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string Branch, string Dockerfile,
-    int ContainerPort, string HealthPath, Guid? ActiveDeploymentId, string HealthStatus)
+    int ContainerPort, string HealthPath, Guid? ActiveDeploymentId, string HealthStatus,
+    DeploymentMode DeploymentMode, string ComposeFile, string ComposeService)
 {
     public static ProjectResponse From(Project p) => new(p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile,
-        p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus);
+        p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService);
 }
 public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State, DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId)
+    DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services)
 {
     public static DeploymentResponse From(Deployment d) => new(d.Id, d.ProjectId, d.State, d.CreatedAt,
-        d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId);
+        d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId,
+        System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? []);
 }

@@ -12,6 +12,8 @@ public sealed class Deployment
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.UtcNow;
     public string? CommitSha { get; set; }
     public string? ImageTag { get; set; }
+    public string? ProtectedComposeManifest { get; set; }
+    public string ServiceStatusJson { get; set; } = "[]";
     public string? ContainerId { get; set; }
     public string? Error { get; private set; }
     public Guid? RollbackSourceId { get; set; }

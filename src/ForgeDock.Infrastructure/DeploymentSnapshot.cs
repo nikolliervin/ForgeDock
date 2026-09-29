@@ -4,11 +4,12 @@ using System.Text.Json;
 namespace ForgeDock.Infrastructure;
 
 public sealed record DeploymentSnapshot(string RepositoryUrl, string Branch, string Dockerfile,
-    int ContainerPort, string HealthPath, Dictionary<string, string> ProtectedEnvironment)
+    int ContainerPort, string HealthPath, Dictionary<string, string> ProtectedEnvironment, DeploymentMode DeploymentMode = DeploymentMode.Dockerfile,
+    string ComposeFile = "docker-compose.yml", string ComposeService = "")
 {
     public static DeploymentSnapshot Create(Project p, IEnumerable<ProjectEnvironment> environment) =>
         new(p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath,
-            environment.ToDictionary(e => e.Name, e => e.ProtectedValue));
+            environment.ToDictionary(e => e.Name, e => e.ProtectedValue), p.DeploymentMode, p.ComposeFile, p.ComposeService);
     public string Serialize() => JsonSerializer.Serialize(this);
     public static DeploymentSnapshot Deserialize(string json) => JsonSerializer.Deserialize<DeploymentSnapshot>(json)
         ?? throw new InvalidOperationException("Deployment configuration snapshot is missing.");
