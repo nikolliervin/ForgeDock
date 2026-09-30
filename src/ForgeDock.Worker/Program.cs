@@ -10,4 +10,5 @@ builder.Services.AddSingleton(new SecretProtector(builder.Configuration["ForgeDo
 builder.Services.AddDbContext<ForgeDockDbContext>(o => o.UseNpgsql(connection));
 builder.Services.AddSingleton<ProcessRunner>();
 builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<MetricsCollector>();
 await builder.Build().RunAsync();

@@ -5,6 +5,7 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<MetricSample> Metrics => Set<MetricSample>();
     public DbSet<CustomDomain> CustomDomains => Set<CustomDomain>();
     public DbSet<ProjectOperation> Operations => Set<ProjectOperation>();
     public DbSet<Project> Projects => Set<Project>();
@@ -14,6 +15,11 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<MetricSample>().HasIndex(m => new { m.ProjectId, m.Timestamp });
+        model.Entity<MetricSample>().HasIndex(m => m.Timestamp);
+        model.Entity<MetricSample>().Property(m => m.ContainerId).HasMaxLength(64);
+        model.Entity<MetricSample>().Property(m => m.Service).HasMaxLength(200);
+        model.Entity<MetricSample>().HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<CustomDomain>().Property(d => d.State).HasConversion<string>();
         model.Entity<CustomDomain>().Property(d => d.Hostname).HasMaxLength(253);
         model.Entity<CustomDomain>().HasIndex(d => d.Hostname).IsUnique();

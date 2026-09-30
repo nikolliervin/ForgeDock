@@ -41,6 +41,7 @@ app.MapGet("/health/ready", async (ForgeDockDbContext db, CancellationToken ct) 
     await db.Database.CanConnectAsync(ct) ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503));
 var api = app.MapGroup("/api").RequireAuthorization();
 api.MapDomainEndpoints();
+api.MapMetricsEndpoints();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(
