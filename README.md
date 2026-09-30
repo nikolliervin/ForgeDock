@@ -36,3 +36,5 @@ Choose **Auto** to build repositories without a Dockerfile. See [automatic build
 The built-in React documentation lives at http://127.0.0.1:5173/docs and is available without signing in. Built frontend hosting also serves documentation routes from the API.
 
 Custom application domains and automatic HTTPS are available through the project **Domains** tab after configuring a public server. See [custom domains setup](docs/CUSTOM_DOMAINS.md). Local development remains on loopback by default.
+
+See [application metrics](docs/METRICS.md) for resource history, collection behavior, and bulk environment imports.

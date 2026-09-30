@@ -14,3 +14,41 @@ select{font:inherit;background:#0a1018;border:1px solid #354054;border-radius:5p
 .resource-nav>a.nav{text-decoration:none;font-size:13px;display:block}
 
 .domains-section{max-width:1000px}.domains-section>.title-row{margin:0 0 20px}.domains-section h2{margin-bottom:8px}.domains-section .title-row p{margin:0}.domain-help{font-size:12px;text-decoration:none;white-space:nowrap}.domain-setup{margin-bottom:20px;background:#151e32;border-color:#354367}.domain-setup h3{font-size:16px;margin:18px 0 8px}.domain-setup p{max-width:650px}.domain-setup a{font-size:13px;text-decoration:none}.domain-add{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px}.domain-add label{margin:0;flex:1}.domain-add button{height:44px;white-space:nowrap}.domain-empty{text-align:center;padding:42px 25px}.domain-empty h3{font-size:17px;margin:16px 0 10px}.domain-empty p{max-width:450px;margin:0 auto}.domain-empty-icon{font-size:32px;color:#a8bcff}.domain-list{display:flex;flex-direction:column;gap:18px}.domain-card .title-row{align-items:flex-start;margin-bottom:18px}.domain-hostname{font-size:17px;font-weight:600;text-decoration:none;overflow-wrap:anywhere}.domain-state{font-size:11px;padding:6px 9px;border:1px solid #354054;border-radius:5px;background:#1c2637;color:#bac5d6;white-space:nowrap}.state-active{color:#80dcac;background:#153529;border-color:#24553c}.state-error{color:#ffa3a3;background:#442425;border-color:#6e3541}.domain-card details{margin:22px 0;border-top:1px solid #29313f;padding-top:18px}.domain-card summary{cursor:pointer;font-size:13px;color:#b8c5d9;font-weight:600}.domain-card summary>span{float:right;color:#8591a3;font-size:11px;font-weight:400}.domain-records{overflow:auto;border:1px solid #29313f;border-radius:6px;margin:16px 0}.domain-records table{width:100%;border-collapse:collapse;font-size:12px}.domain-records th{text-align:left;font-size:10px;font-weight:500;color:#929dac;padding:10px 12px;background:#0c1016}.domain-records td{padding:12px;border-top:1px solid #29313f;vertical-align:top}.domain-record-value{display:flex;align-items:flex-start;gap:10px;min-width:170px}.domain-record-value code{font:11px/1.7 monospace;color:#b8c5d9;overflow-wrap:anywhere;flex:1;min-width:0}.domain-record-value button{font-size:10px;padding:3px 6px;flex-shrink:0}.domain-card>p,.domain-card details>p{font-size:13px}.domain-card code{color:#b8c5d9}.domain-actions{display:flex;gap:10px;align-items:center;border-top:1px solid #29313f;padding-top:18px}.domain-remove{margin-left:auto;color:#d8a4ae}.domain-notice{padding:12px 14px;border:1px solid #354367;background:#151e32;border-radius:6px;color:#b8c5d9}.tabs{flex-wrap:wrap}@media(max-width:640px){.domain-add{align-items:stretch;flex-direction:column}.domain-add label{margin-bottom:5px}.domain-card .title-row{gap:12px}.domain-hostname{font-size:15px}.domain-state{font-size:10px}.domain-records table{min-width:650px}.domain-actions{flex-wrap:wrap}.domain-card details>p{font-size:12px}}
+
+.metrics { min-width: 0; }
+.metrics-controls { display: flex; gap: 12px; flex-wrap: wrap; }
+.metrics-controls label { display: grid; gap: 7px; font-size: 12px; color: #a1a1aa; }
+.metrics-controls select { min-width: 140px; }
+.metrics-notice { display: flex; align-items: center; gap: 10px; padding: 14px 16px; margin: 16px 0; border: 1px solid #303038; border-radius: 10px; background: #18181d; color: #a1a1aa; font-size: 13px; flex-wrap: wrap; }
+.metrics-notice small { margin-left: auto; }
+.metric-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #71717a; flex-shrink: 0; }
+.metrics-notice.fresh .metric-live-dot { background: #34d399; box-shadow: 0 0 0 4px #34d39915; }
+.metric-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.metric-card { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+.metric-card > span { font-size: 13px; color: #a1a1aa; }
+.metric-card strong { font-size: 27px; font-weight: 600; letter-spacing: -1px; }
+.metric-card small { font-size: 11px; color: #85858f; line-height: 1.5; }
+.metric-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.metric-chart:last-child { grid-column: 1 / -1; }
+.metric-chart { min-width: 0; padding: 20px; }
+.metric-chart h3 { margin: 0 0 16px; font-size: 14px; font-weight: 500; }
+.metric-chart svg { display: block; width: 100%; overflow: visible; }
+.metric-chart svg text { fill: #85858f; font-size: 10px; }
+.metric-gridline { stroke: #2a2a33; stroke-dasharray: 3 4; }
+.metric-cursor { stroke: #a1a1aa; stroke-dasharray: 3 3; }
+.metric-chart-caption { height: 20px; font-size: 11px; color: #85858f; margin-top: 8px; }
+.metric-chart-empty { display: grid; place-items: center; min-height: 130px; color: #85858f; font-size: 13px; }
+.metrics-table-wrap { overflow-x: auto; }
+.metrics-table { min-width: 760px; font-size: 12px; }
+.metrics-footnote { color: #85858f; font-size: 12px; line-height: 1.6; }
+@media (max-width: 1050px) { .metric-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .metric-charts { grid-template-columns: 1fr; } .metric-card { padding: 14px; } .metric-card strong { font-size: 23px; } .metrics-controls { width: 100%; } .metrics-controls label { flex: 1; } .metrics-controls select { width: 100%; min-width: 0; } .metrics-notice small { margin-left: 17px; } .tabs { flex-wrap: wrap; } }
+
+.environment-import { border-top: 1px solid #303038; margin-top: 28px; padding-top: 22px; }
+.environment-import summary { cursor: pointer; color: #c4b5fd; font-size: 14px; font-weight: 500; }
+.environment-import p { font-size: 13px; line-height: 1.6; }
+.environment-import textarea { resize: vertical; min-height: 170px; width: 100%; box-sizing: border-box; border: 1px solid #363640; border-radius: 8px; background: #111116; color: #e4e4e7; padding: 14px; font: 13px/1.7 ui-monospace, monospace; }
+.environment-import textarea:focus { outline: 2px solid #8b5cf6; outline-offset: 2px; }
+.environment-overwrite { display: flex; align-items: center; gap: 10px; }
+.environment-overwrite input { width: auto; margin: 0; }
+.environment-saved { color: #34d399; }

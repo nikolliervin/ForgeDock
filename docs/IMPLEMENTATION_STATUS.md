@@ -37,3 +37,7 @@ Public React documentation is available at `/docs`, including direct links from 
 The Domains tab supports hostname creation, DNS ownership records, verification requests, certificate status, and queued removal. Verified names follow project deployment routes. An opt-in Caddy edge issues and renews certificates, redirects HTTP to HTTPS, and preserves forwarded hostname/scheme headers. Public hosting remains disabled by default.
 
 Current checks: 55 backend tests and 10 documentation/navigation/domain browser tests pass; backend and production frontend builds pass. Local Pebble ACME issuance, certificate hostname/expiry, HTTPS forwarding, redirects, and unknown-host rejection were exercised. Public Let's Encrypt issuance requires an operator-owned hostname and publicly reachable server and has not been exercised. See [domain setup](CUSTOM_DOMAINS.md) and [verification](CUSTOM_DOMAINS_VERIFICATION.md).
+
+## Application metrics and bulk environment imports
+
+The Metrics tab shows CPU, memory, received/sent traffic rates, and 24-hour usage history, plus per-service uptime, limits, processes, disk/network totals, and Compose service filtering. Collection runs separately from deployments, stores samples in PostgreSQL, and cleans up expired history. Freshness and missing data are explicit. The Environment tab supports atomic encrypted .env imports with protected replacement of existing variables. See [metrics](METRICS.md) and [verification](METRICS_VERIFICATION.md).

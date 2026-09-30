@@ -27,7 +27,7 @@ public static class MetricsEndpoints
             var bucket = hours switch { 1 => 30, 6 => 120, _ => 300 };
             return Results.Ok(new { range, service, start, end = now, sampleIntervalSeconds = 30, bucketSeconds = bucket,
                 retentionHours = 24, services, fresh, latestAt,
-                latest = latest.Select(m => new { m.Service, m.CpuPercent, m.MemoryBytes, m.MemoryLimitBytes,
+                latest = latest.Select(m => new { m.ContainerId, m.Service, m.CpuPercent, m.MemoryBytes, m.MemoryLimitBytes,
                     m.NetworkReceivedBytes, m.NetworkSentBytes, m.BlockReadBytes, m.BlockWrittenBytes, m.Pids,
                     uptimeSeconds = Math.Max(0, (m.Timestamp - m.StartedAt).TotalSeconds) }),
                 points = MetricSeries.Build(samples, start, bucket) });
