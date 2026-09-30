@@ -9,7 +9,7 @@ public static class BackupEncryption
     private const int Chunk = 65536;
     public static async Task Encrypt(string source, string destination, string encodedKey, CancellationToken ct)
     {
-        await using var input = File.OpenRead(source); await using var output = Private(destination);
+        await using var input = File.OpenRead(source); await using var output = PrivateFiles.Create(destination);
         var prefix = RandomNumberGenerator.GetBytes(8); await output.WriteAsync("FGDB1"u8.ToArray(), ct); await output.WriteAsync(prefix, ct);
         using var cipher = new AesGcm(Convert.FromBase64String(encodedKey), 16);
         var buffer = new byte[Chunk]; uint index = 0;
@@ -25,7 +25,7 @@ public static class BackupEncryption
     {
         try
         {
-            await using var input = File.OpenRead(source); await using var output = Private(destination);
+            await using var input = File.OpenRead(source); await using var output = PrivateFiles.Create(destination);
             var header = new byte[5]; await input.ReadExactlyAsync(header, ct);
             if (!header.AsSpan().SequenceEqual("FGDB1"u8)) throw new CryptographicException("Unsupported backup format.");
             var prefix = new byte[8]; await input.ReadExactlyAsync(prefix, ct); uint index = 0;
@@ -44,6 +44,4 @@ public static class BackupEncryption
         catch { File.Delete(destination); throw; }
     }
     private static byte[] Nonce(byte[] prefix, uint index) { var nonce = new byte[12]; prefix.CopyTo(nonce, 0); BinaryPrimitives.WriteUInt32BigEndian(nonce.AsSpan(8), index); return nonce; }
-    private static FileStream Private(string file) => new(file, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write,
-        UnixCreateMode = OperatingSystem.IsWindows() ? null : UnixFileMode.UserRead | UnixFileMode.UserWrite });
 }

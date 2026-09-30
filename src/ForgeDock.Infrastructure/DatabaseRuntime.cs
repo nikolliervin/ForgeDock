@@ -39,8 +39,7 @@ public sealed class DatabaseRuntime(ProcessRunner runner, SecretProtector protec
             var file = Path.Combine(directory, $"db-{Guid.NewGuid():N}.env");
             try
             {
-                using (var stream = new FileStream(file, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write,
-                    UnixCreateMode = OperatingSystem.IsWindows() ? null : UnixFileMode.UserRead | UnixFileMode.UserWrite }))
+                using (var stream = PrivateFiles.Create(file))
                 using (var writer = new StreamWriter(stream))
                 {
                     var password = protector.Unprotect(service.ProtectedPassword);

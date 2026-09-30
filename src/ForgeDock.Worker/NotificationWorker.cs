@@ -14,12 +14,12 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
     {
         while (!ct.IsCancellationRequested)
         {
-            try { await Tick(ct); }
-            catch (Exception error) when (error is not OperationCanceledException) { logger.LogWarning("Notification processing failed ({Type}).", error.GetType().Name); }
+            try { await ProcessAsync(ct); }
+            catch (Exception error) when (!ct.IsCancellationRequested) { logger.LogWarning("Notification processing failed ({Type}).", error.GetType().Name); }
             await Task.Delay(TimeSpan.FromSeconds(10), ct);
         }
     }
-    private async Task Tick(CancellationToken ct)
+    public async Task ProcessAsync(CancellationToken ct)
     {
         using var scope = scopes.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -41,7 +41,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
             }
         }
         await db.SaveChangesAsync(ct);
-        foreach (var delivery in await db.NotificationDeliveries.Where(n => n.SentAt == null && n.Attempts < 5 && n.NextAttemptAt <= DateTimeOffset.UtcNow).OrderBy(n => n.NextAttemptAt).Take(20).ToListAsync(ct))
+        var cutoff = DateTimeOffset.UtcNow;
+        foreach (var delivery in await db.NotificationDeliveries.Where(n => n.SentAt == null && n.Attempts < 5 && n.NextAttemptAt <= cutoff).OrderBy(n => n.NextAttemptAt).Take(20).ToListAsync(ct))
         {
             var settings = await db.NotificationSettings.FindAsync([delivery.ProjectId], ct);
             delivery.Attempts++;
@@ -50,7 +51,7 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
                 if (settings is null || !Configured(settings, delivery.Channel)) throw new InvalidOperationException();
                 await Send(settings, delivery, ct); delivery.SentAt = DateTimeOffset.UtcNow; delivery.Error = null;
             }
-            catch (Exception error) when (error is not OperationCanceledException)
+            catch (Exception) when (!ct.IsCancellationRequested)
             {
                 // Provider exceptions can contain webhook tokens or SMTP credentials.
                 delivery.Error = "Delivery failed. Check channel credentials and connectivity.";
@@ -72,7 +73,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
                 client.Credentials = new NetworkCredential(username, configuration["ForgeDock:Smtp:Password"]);
             using var mail = new MailMessage(configuration["ForgeDock:Smtp:From"] ?? throw new InvalidOperationException(), settings.Email,
                 "ForgeDock deployment notification", delivery.Message);
-            await client.SendMailAsync(mail, ct); return;
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); deadline.CancelAfter(TimeSpan.FromSeconds(15));
+            await client.SendMailAsync(mail, deadline.Token); return;
         }
         var url = protector.Unprotect(delivery.Channel == "Slack" ? settings.ProtectedSlackUrl : settings.ProtectedDiscordUrl);
         if (!NotificationPolicy.ValidWebhook(delivery.Channel, url)) throw new InvalidOperationException();

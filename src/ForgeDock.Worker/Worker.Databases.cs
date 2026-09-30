@@ -11,7 +11,7 @@ public sealed partial class Worker
         {
             service.State = "Provisioning"; await db.SaveChangesAsync(ct);
             try { await Databases.Provision(service, ct); service.State = "Running"; service.Error = null; }
-            catch (Exception error) when (error is not OperationCanceledException) { service.State = "Failed"; service.Error = "Database provisioning failed. Check Docker availability and retry."; logger.LogWarning("Database {Id} provisioning failed ({Type}).", service.Id, error.GetType().Name); }
+            catch (Exception error) when (!ct.IsCancellationRequested) { service.State = "Failed"; service.Error = "Database provisioning failed. Check Docker availability and retry."; logger.LogWarning("Database {Id} provisioning failed ({Type}).", service.Id, error.GetType().Name); }
             await db.SaveChangesAsync(ct);
         }
     }

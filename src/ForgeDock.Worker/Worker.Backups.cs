@@ -41,7 +41,7 @@ public sealed partial class Worker
             }
             job.State = "Completed";
         }
-        catch (Exception error) when (error is not OperationCanceledException)
+        catch (Exception error) when (!ct.IsCancellationRequested)
         { job.State = "Failed"; job.Error = "Database operation failed. Check Docker and backup files before retrying."; logger.LogWarning("Backup job {Id} failed ({Type}).", job.Id, error.GetType().Name); }
         finally
         {
