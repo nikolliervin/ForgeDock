@@ -71,6 +71,14 @@ ForgeDock__Domains__AcmeDirectory=https://acme-staging-v02.api.letsencrypt.org/d
 
 Staging certificates are not publicly trusted. The dashboard identifies test-authority configurations and untrusted test certificates. Return to the default production directory when ready, and restart the API/worker.
 
+A repeatable local smoke test needs Docker, OpenSSL, and Python 3.8+:
+
+```bash
+python3 scripts/test-https-local.py
+```
+
+It creates an isolated Pebble ACME server, nginx, and Caddy containers, checks certificate issuance/hostname/expiry, HTTPS forwarding, HTTP redirects, and unknown-host rejection, then removes the test resources. It uses a public Pebble test CA fixture and bypasses external DNS validation only inside the test authority. It does not prove public DNS ownership or public Let's Encrypt issuance.
+
 Check edge logs and the current DNS records if issuance takes longer than expected:
 
 ```bash

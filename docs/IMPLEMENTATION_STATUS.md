@@ -15,7 +15,7 @@ Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption
 - Crash-time nginx/database reconciliation and stronger execution fencing/concurrent lifecycle locking are not complete.
 - Application monitoring/log collection shares the serial deployment worker and pauses during builds.
 - Source/image/log retention and cleanup automation are absent; deleting a project removes its containers, route, and DB history but retains images/source directories.
-- Single trusted operator only; no custom domains/TLS, private Git credentials, hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
+- Single trusted operator only; no private Git credentials, hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
 - Git hostname checks do not fully address DNS rebinding/private-address resolution; restrict worker egress for untrusted inputs.
 
 The main workflow is demonstrable. The complete system prompt's hardened definition of done is not claimed.
@@ -31,3 +31,9 @@ Thirty-two unit tests and one opt-in real Docker integration test pass. The inte
 Auto mode now uses a configured Dockerfile when present and otherwise builds with Railpack. Optional build/start command overrides are persisted and snapshotted. The worker supplies a default runtime PORT, isolates build process credentials, and reuses the existing health-check, routing, and retained-image rollback flow. The startup script installs the pinned builder and starts BuildKit.
 
 Public React documentation is available at `/docs`, including direct links from built API hosting, search, copyable code examples, mobile navigation, and guides for supported deployment workflows. Its dark theme matches the dashboard, and Documentation is separate from the project list. See [verification results](AUTO_AND_DOCS_VERIFICATION.md) for the backend, browser, launcher, and real Auto deployment checks.
+
+## Custom domains and automatic HTTPS
+
+The Domains tab supports hostname creation, DNS ownership records, verification requests, certificate status, and queued removal. Verified names follow project deployment routes. An opt-in Caddy edge issues and renews certificates, redirects HTTP to HTTPS, and preserves forwarded hostname/scheme headers. Public hosting remains disabled by default.
+
+Current checks: 55 backend tests and 10 documentation/navigation/domain browser tests pass; backend and production frontend builds pass. Local Pebble ACME issuance, certificate hostname/expiry, HTTPS forwarding, redirects, and unknown-host rejection were exercised. Public Let's Encrypt issuance requires an operator-owned hostname and publicly reachable server and has not been exercised. See [domain setup](CUSTOM_DOMAINS.md) and [verification](CUSTOM_DOMAINS_VERIFICATION.md).

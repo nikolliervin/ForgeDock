@@ -143,7 +143,7 @@ The old container's deployment ownership label is checked before stopping it. Im
 
 ## Networking
 
-nginx runs as `forgedock-proxy`, with host port 8088 bound to loopback. `.runtime/routes` is mounted read-only into `/etc/nginx/conf.d` with a Fedora SELinux shared label. Each project has an owned `<project-id>.conf` and a `<project-id>.localhost` server name. Upstreams use Docker network DNS and the configured application port. Configuration is atomically replaced, validated with `nginx -t`, and reloaded. Validation/reload failure restores the previous file. Successful reload and DB commit are not atomic; restart reconciliation is still needed. Initial health probes run through `wget` inside the proxy container. Custom domains, WebSocket proxy settings, and automatic HTTPS are not implemented.
+nginx runs as `forgedock-proxy`, with host port 8088 bound to loopback. `.runtime/routes` is mounted read-only into `/etc/nginx/conf.d` with a Fedora SELinux shared label. Each project has an owned `<project-id>.conf` and a `<project-id>.localhost` server name. Upstreams use Docker network DNS and the configured application port. Configuration is atomically replaced, validated with `nginx -t`, and reloaded. Validation/reload failure restores the previous file. Successful reload and DB commit are not atomic; restart reconciliation is still needed. Initial health probes run through `wget` inside the proxy container. Verified custom domain aliases share these project routes. An opt-in Caddy edge provides automatic HTTPS and forwards the original hostname and scheme to nginx. Unknown hostnames return 404. See [custom domains](CUSTOM_DOMAINS.md) for DNS ownership checks, certificate persistence, and public-server setup. WebSocket proxy settings are not implemented.
 
 ## Background processing and broker
 
@@ -165,4 +165,4 @@ Configuration comes from environment variables loaded by the scripts. `Connectio
 
 ## Decisions, limitations, and evolution
 
-See [ADRs](adr/001-single-host-architecture.md) and [implementation status](IMPLEMENTATION_STATUS.md). Planned improvements include deployment crash reconciliation/fencing, retention and cleanup, API/workflow test breadth, deep-link routing, hardened Git egress, isolated builds, packaged production service supervision, TLS/custom domains, private repositories, and independent monitoring. None is represented as already available.
+See [ADRs](adr/001-single-host-architecture.md) and [implementation status](IMPLEMENTATION_STATUS.md). Planned improvements include deployment crash reconciliation/fencing, retention and cleanup, API/workflow test breadth, deep-link routing, hardened Git egress, isolated builds, packaged production service supervision, private repositories, and independent monitoring. None is represented as already available.
