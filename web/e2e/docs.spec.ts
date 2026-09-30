@@ -70,6 +70,10 @@ test('desktop documentation overview', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/docs');
   await expect(page.getByRole('navigation', { name: 'On this page' })).toBeVisible();
+  expect(await page.locator('.docs-site').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(12, 16, 22)');
+  await page.locator('#how-it-works').evaluate(element => element.scrollIntoView({ block: 'start' }));
+  await expect(page.getByRole('navigation', { name: 'On this page' }).locator('[aria-current="location"]')).toHaveText('Built around a simple workflow');
+  await page.evaluate(() => window.scrollTo(0, 0));
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: '../.runtime/screenshots/docs-desktop.png', fullPage: true });
 });

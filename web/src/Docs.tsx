@@ -88,6 +88,7 @@ export function Docs() {
   const [pathname, setPathname] = useState(window.location.pathname);
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
   const search = useRef<HTMLInputElement>(null);
   const slug = pathname.replace(/^\/docs\/?/, '').replace(/\/$/, '');
   const article = articles.find(item => item.slug === slug);
@@ -102,6 +103,20 @@ export function Docs() {
     return () => { window.removeEventListener('popstate', onNavigation); window.removeEventListener('keydown', onKey); };
   }, []);
   useEffect(() => { document.title = `${article?.title ?? 'Page not found'} · ForgeDock Docs`; }, [article]);
+  useEffect(() => {
+    if (!article) return;
+    const updateSection = () => {
+      const current = [...article.sections].reverse().find(section => {
+        const element = document.getElementById(section.id);
+        return element && element.getBoundingClientRect().top <= 160;
+      });
+      const atBottom = window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setActiveSection(atBottom ? article.sections[article.sections.length - 1].id : current?.id ?? article.sections[0].id);
+    };
+    updateSection();
+    window.addEventListener('scroll', updateSection, { passive: true });
+    return () => window.removeEventListener('scroll', updateSection);
+  }, [article]);
   const matches = query.trim() ? articles.filter(item => `${item.title} ${item.summary} ${item.keywords} ${item.sections.map(section => section.title).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
   return <div className="docs-site">
     <a className="docs-skip" href="#docs-content">Skip to content</a>
@@ -114,6 +129,6 @@ export function Docs() {
     <main id="docs-content" className="docs-main" tabIndex={-1}>{article ? <><div className="docs-breadcrumb"><Link slug="">Documentation</Link><span>/</span><span>{article.title}</span></div><div className={'docs-article-heading ' + (!slug ? 'docs-hero' : '')}><span className="docs-eyebrow">{slug ? article.group : 'THE FORGEDOCK HANDBOOK'}</span><h1>{slug ? article.title : <>From repository<br/>to <em>running.</em></>}</h1><p>{slug ? article.summary : 'Everything you need to build, deploy, and operate applications on your own infrastructure.'}</p>{!slug && <div className="docs-hero-actions"><Link slug="quickstart" className="docs-primary-link">Start building <span aria-hidden="true">→</span></Link><Link slug="automatic-builds">Explore automatic builds <span aria-hidden="true">↗</span></Link></div>}</div>
       <article className="docs-article">{article.sections.map(section => <section key={section.id} id={section.id}><h2><a href={'#' + section.id}>{section.title}<span aria-hidden="true">#</span></a></h2>{section.content}</section>)}</article>
       <div className="docs-feedback"><span>Ready for the next step?</span><a href="/" onClick={event => navigate(event, '/')}>Open your workspace →</a></div><nav className="docs-pagination" aria-label="Adjacent documentation pages">{index > 0 ? <Link slug={articles[index - 1].slug}><span>← Previous</span><strong>{articles[index - 1].title}</strong></Link> : <div/>}{index < articles.length - 1 && <Link slug={articles[index + 1].slug}><span>Next →</span><strong>{articles[index + 1].title}</strong></Link>}</nav><footer className="docs-footer"><span>◈ ForgeDock</span><span>Built for the way you ship.</span></footer></> : <div className="docs-not-found"><span className="docs-eyebrow">404 · DOCUMENTATION</span><h1>This page sailed away.</h1><p>That documentation page does not exist. Find a guide in the sidebar or start at the introduction.</p><Link slug="" className="docs-primary-link">Back to documentation →</Link></div>}</main>
-    {article && <nav className="docs-toc" aria-label="On this page"><span>ON THIS PAGE</span>{article.sections.map(section => <a href={'#' + section.id} key={section.id}>{section.title.replace(/^\d\. /, '')}</a>)}<div className="docs-toc-callout"><span aria-hidden="true">◇</span><strong>Less setup.<br/>More shipping.</strong><p>No Dockerfile? Start with an automatic build.</p><Link slug="automatic-builds">See how it works →</Link></div></nav>}</div>
+    {article && <nav className="docs-toc" aria-label="On this page"><span>ON THIS PAGE</span>{article.sections.map(section => <a href={'#' + section.id} key={section.id} className={activeSection === section.id ? 'is-active' : undefined} aria-current={activeSection === section.id ? 'location' : undefined}>{section.title.replace(/^\d\. /, '')}</a>)}<div className="docs-toc-callout"><span aria-hidden="true">◇</span><strong>Less setup.<br/>More shipping.</strong><p>No Dockerfile? Start with an automatic build.</p><Link slug="automatic-builds">See how it works →</Link></div></nav>}</div>
   </div>;
 }
