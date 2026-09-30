@@ -32,3 +32,5 @@ Start with [development setup](docs/DEVELOPMENT.md). Read [architecture](docs/AR
 For multiple services, choose Docker Compose, set the repository-relative Compose file, routed service, and its internal port. See [Compose support](docs/COMPOSE.md).
 
 Choose **Auto** to build repositories without a Dockerfile. See [automatic builds](docs/AUTOMATIC_BUILDS.md) for setup and command overrides.
+
+The built-in React documentation lives at http://127.0.0.1:5173/docs and is available without signing in. Built frontend hosting also serves documentation routes from the API.

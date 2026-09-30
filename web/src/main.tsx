@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
+import { Docs } from './Docs';
+import { navigate } from './navigation';
 
 type Project = { id: string; name: string; repositoryUrl: string; branch: string; dockerfile: string; containerPort: number; healthPath: string; activeDeploymentId: string | null; healthStatus: string; deploymentMode: 'Dockerfile' | 'Compose' | 'Auto'; buildCommand: string; startCommand: string; composeFile: string; composeService: string };
 type Deployment = { id: string; projectId: string; state: string; commitSha: string | null; createdAt: string; updatedAt: string; error: string | null; rollbackSourceId: string | null; services: { name: string; state: string; health: string | null; image: string }[] };
@@ -107,7 +109,7 @@ function App() {
     void refresh(); const interval = setInterval(refresh, 1500);
     return () => { disposed = true; clearInterval(interval); };
   }, [deployment?.id, authenticated]);
-  if (!authenticated) return <main className="login"><div className="brand">◈ ForgeDock</div><h1>Your deployment control room.</h1><p>Sign in with your management token. It stays in memory for this session.</p>
+  if (!authenticated) return <main className="login"><div className="brand">◈ ForgeDock</div><a className="login-docs" href="/docs" onClick={event => navigate(event, "/docs")}>Documentation ↗</a><h1>Your deployment control room.</h1><p>Sign in with your management token. It stays in memory for this session.</p>
     <form onSubmit={e => { e.preventDefault(); void action(async () => { await api('/session'); setAuthenticated(true); }); }}>
       <label>Management token<input type="password" autoComplete="off" required value={token} onChange={e => setToken(e.target.value)} /></label>
       <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
@@ -115,6 +117,7 @@ function App() {
   return <div className="layout"><aside><div className="brand">◈ ForgeDock</div><span className="caption">WORKSPACE</span><button className="nav" onClick={() => { setSelected(null); setCreating(false); }}>Overview</button>
     <div className="sidebar-title">Projects <button aria-label="Create project" onClick={() => setCreating(true)}>+</button></div>
     {projects.map(p => <button key={p.id} className={'nav ' + (selected === p.id ? 'active' : '')} onClick={() => { setSelected(p.id); setCreating(false); }}>{p.name}</button>)}
+    <a className="nav" href="/docs" onClick={event => navigate(event, "/docs")}>Documentation ↗</a>
     <button className="signout" onClick={() => { setToken(''); setAuthenticated(false); setProjects([]); }}>Sign out</button></aside>
     <main><header><span>Workspace / {project?.name ?? 'Overview'}</span><span className="badge">Self-hosted</span></header>
       {error && <div role="alert" className="error">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
@@ -130,4 +133,15 @@ function App() {
       </> : <><div className="title-row"><div><span className="caption">YOUR WORKSPACE</span><h1>Projects</h1><p>Build, deploy, and keep track of your services.</p></div><button onClick={() => setCreating(true)}>New project</button></div>{projects.length ? <div className="project-grid">{projects.map(p => <button key={p.id} className="panel project-card" onClick={() => setSelected(p.id)}><h2>{p.name}</h2><p>{p.repositoryUrl}</p><span className="badge">{p.branch}</span><small>{p.healthStatus === 'NotDeployed' ? 'Not deployed' : p.healthStatus}</small></button>)}</div> : <div className="panel empty"><h2>Your first deployment starts here.</h2><p>Connect a repository, choose a build method, and follow the build from source to a running service.</p><button onClick={() => setCreating(true)}>Create your first project</button></div>}</>}
     </main></div>;
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
+function Root() {
+  const [pathname, setPathname] = useState(window.location.pathname);
+  useEffect(() => {
+    const update = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }, []);
+  const docs = pathname === '/docs' || pathname.startsWith('/docs/');
+  useEffect(() => { if (!docs) document.title = 'ForgeDock · Deployment workspace'; }, [docs]);
+  return <><div hidden={docs}><App /></div>{docs && <Docs />}</>;
+}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><Root /></React.StrictMode>);

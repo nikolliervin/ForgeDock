@@ -29,6 +29,7 @@ if (!string.IsNullOrWhiteSpace(webRoot) && Directory.Exists(webRoot))
     var files = new PhysicalFileProvider(Path.GetFullPath(webRoot));
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
+    app.MapGet("/docs/{**path}", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
 }
 app.UseStatusCodePages();
 app.UseAuthentication();
