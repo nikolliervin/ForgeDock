@@ -129,6 +129,64 @@ try:
     subprocess.run(['docker', 'exec', 'forgedock-postgres', 'psql', '-U', 'forgedock', '-d', DB, '-c',
         'UPDATE "Operations" SET "State" = \'Completed\''], check=True, stdout=subprocess.DEVNULL)
     assert deliver(push, delivery=retry_delivery)[1]['status'] == 'Queued'
+    # Notification settings never expose stored webhooks and reject arbitrary destinations.
+    notification_path = f'/projects/{project_id}/notifications'
+    assert call(notification_path, {'onSuccess': True, 'onFailure': True, 'slackUrl': 'https://localhost/hook'}, 'PUT')[0] == 400
+    assert call(notification_path, {'onSuccess': True, 'onFailure': True, 'slackUrl': 'https://hooks.slack.com/services/T1/B2/secret', 'discordUrl': 'https://discord.com/api/webhooks/123/secret', 'email': 'operator@example.com'}, 'PUT')[0] == 204
+    config = call(notification_path)[1]
+    assert config['slackConfigured'] and config['discordConfigured'] and 'secret' not in json.dumps(config)
+    assert call(notification_path, {'onSuccess': False, 'onFailure': True}, 'PUT')[0] == 204
+    assert call(notification_path)[1]['slackConfigured']
+    # Managed services are unique and atomically add a protected connection variable.
+    database_path = f'/projects/{project_id}/databases'
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(executor.map(lambda _: call(database_path, {'kind': 'PostgreSql'}), range(4)))
+    assert sum(code == 202 for code, _ in results) == 1 and sum(code == 409 for code, _ in results) == 3, results
+    database = call(database_path)[1][0]
+    assert 'protectedPassword' not in database
+    assert 'DATABASE_URL' in call(f'/projects/{project_id}/environment')[1]
+    assert call(f"{database_path}/{database['id']}/schedule", {'intervalHours': 24}, 'PUT')[0] == 204
+    assert call(f"{database_path}/{database['id']}/schedule", {'intervalHours': 169}, 'PUT')[0] == 400
+    assert call(database_path)[1][0]['nextBackupAt'] is not None
+    # Independent preview DB and environment; exact SHA; concurrent receipt dedup; stale close handling.
+    assert call(f'/projects/{project_id}/previews', {'enabled': True}, 'PUT')[0] == 204
+    pr = {'action': 'opened', 'number': 17, 'repository': {'html_url': 'https://github.com/example/private'},
+          'pull_request': {'updated_at': '2026-10-01T00:00:00Z', 'draft': False, 'base': {'ref': 'main'},
+                           'head': {'ref': 'feature/test', 'sha': 'c' * 40, 'repo': {'html_url': 'https://github.com/example/private'}}}}
+    preview_delivery = str(uuid.uuid4())
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(executor.map(lambda _: deliver(pr, event='pull_request', delivery=preview_delivery), range(4)))
+    assert all(code == 200 for code, _ in results), results
+    assert sum(result['status'] == 'PreviewQueued' for _, result in results) == 1
+    preview = call(f'/projects/{project_id}/previews')[1]['previews'][0]
+    assert preview['branch'] == 'feature/test'
+    variables = call(f"/projects/{preview['id']}/environment")[1]
+    assert variables == ['DATABASE_URL'], variables
+    assert call(f"/projects/{preview['id']}/databases")[1][0]['id'] != database['id']
+    preview_deployments = call(f"/projects/{preview['id']}/deployments")[1]
+    assert len(preview_deployments) == 1 and preview_deployments[0]['trigger'] == 'GitHubPullRequest'
+    fork = json.loads(json.dumps(pr)); fork['pull_request']['head']['repo']['html_url'] = 'https://github.com/fork/private'
+    assert deliver(fork, event='pull_request')[1]['status'] == 'IgnoredFork'
+    closed = {**pr, 'action': 'closed', 'pull_request': {**pr['pull_request'], 'updated_at': '2026-10-01T00:01:00Z'}}
+    assert deliver(closed, event='pull_request')[1]['status'] == 'PreviewClosed'
+    assert call(f"/projects/{preview['id']}/deployments")[1][0]['state'] == 'Cancelled'
+    assert deliver(pr, event='pull_request')[1]['status'] == 'IgnoredStalePreview'
+    # Backup jobs are project-scoped, require running DB, and require restore confirmation.
+    for deployment in call(f'/projects/{project_id}/deployments')[1]:
+        if deployment['state'] == 'Queued': assert call('/deployments/' + deployment['id'] + '/cancel', {})[0] == 200
+    backup_path = f"{database_path}/{database['id']}/backups"
+    assert call(backup_path, {})[0] == 409
+    subprocess.run(['docker', 'exec', 'forgedock-postgres', 'psql', '-U', 'forgedock', '-d', DB, '-c',
+        'UPDATE "DatabaseServices" SET "State" = \'Running\' WHERE "Id" = \'%s\'' % database['id']], check=True, stdout=subprocess.DEVNULL)
+    code, backup = call(backup_path, {})
+    assert code == 202 and backup['kind'] == 'Backup'
+    assert call(backup_path, {})[0] == 409
+    subprocess.run(['docker', 'exec', 'forgedock-postgres', 'psql', '-U', 'forgedock', '-d', DB, '-c',
+        'UPDATE "DatabaseBackups" SET "State" = \'Completed\' WHERE "Id" = \'%s\'' % backup['id']], check=True, stdout=subprocess.DEVNULL)
+    assert call(f"/projects/{project_id}/backups/{backup['id']}/restore", {'confirm': False})[0] == 400
+    assert call(f"/projects/{preview['id']}/backups/{backup['id']}/restore", {'confirm': True})[0] == 404
+    assert call(f"/projects/{project_id}/backups/{backup['id']}/restore", {'confirm': True})[0] == 202
+    print('Notification, database, backup and PR preview API integration checks passed.')
     print('GitHub webhook integration checks passed: signature, filters, ping, concurrent deduplication, pinned commit, snapshot, disable, rotation, and operation conflict.')
 finally:
     if process:

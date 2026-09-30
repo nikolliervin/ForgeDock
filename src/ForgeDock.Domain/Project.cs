@@ -4,6 +4,9 @@ public enum DeploymentMode { Dockerfile, Compose, Auto }
 
 public sealed class Project
 {
+    public bool PreviewsEnabled { get; set; }
+    public Guid? ParentProjectId { get; set; }
+    public int? PullRequestNumber { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public string RepositoryUrl { get; set; } = "";

@@ -103,17 +103,24 @@ public static class WebhookEndpoints
             return Results.Unauthorized();
         var previous = await db.WebhookDeliveries.FindAsync([id, deliveryId], ct);
         if (previous is not null) return Results.Ok(new { status = "Duplicate", previous.DeploymentId });
-        string status; string? commit = null;
+        string status; string? commit = null; PullRequestEvent? pullRequest = null;
         try
         {
             if (!hook.Enabled) status = "IgnoredDisabled";
             else if (eventName == "ping") { using var ping = JsonDocument.Parse(bytes); status = "Ping"; }
+            else if (eventName == "pull_request") { pullRequest = PullRequestWebhook.Evaluate(bytes, project.RepositoryUrl, project.Branch); status = pullRequest.Status; }
             else if (eventName != "push") status = "IgnoredEvent";
             else (status, commit) = GitHubWebhook.EvaluatePush(bytes, project.RepositoryUrl, project.Branch);
         }
         catch (Exception error) when (error is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         { return Results.Problem("Malformed GitHub webhook payload.", statusCode: 400); }
         Deployment? deployment = null;
+        if (pullRequest is not null)
+        {
+            try { (status, deployment) = await PreviewEndpoints.Handle(project, pullRequest, db, protector,
+                request.HttpContext.RequestServices.GetRequiredService<IConfiguration>(), ct); }
+            catch (PreviewBusyException) { return Results.Conflict(new { error = "Preview cleanup pending. Redeliver after it finishes." }); }
+        }
         if (commit is not null)
         {
             if (await db.Operations.AnyAsync(o => o.ProjectId == id && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))

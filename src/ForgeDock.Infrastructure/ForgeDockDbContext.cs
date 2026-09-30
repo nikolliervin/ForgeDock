@@ -5,6 +5,7 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<PreviewEnvironment> PreviewEnvironments => Set<PreviewEnvironment>();
     public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
     public DbSet<DatabaseService> DatabaseServices => Set<DatabaseService>();
     public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
@@ -21,6 +22,8 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<PreviewEnvironment>().HasKey(p => new { p.ParentProjectId, p.Number });
+        model.Entity<PreviewEnvironment>().HasOne<Project>().WithMany().HasForeignKey(p => p.ParentProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<DatabaseBackup>().HasOne<DatabaseService>().WithMany().HasForeignKey(b => b.ServiceId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<DatabaseBackup>().HasIndex(b => new { b.ServiceId, b.CreatedAt });
         model.Entity<DatabaseService>().Property(d => d.Kind).HasConversion<string>();

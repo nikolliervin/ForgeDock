@@ -129,7 +129,14 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             await Databases.Stop(service, operation.Kind == ProjectOperationKind.Delete, ct); service.State = "Stopped";
         }
         project.HealthStatus = "Stopped";
-        if (operation.Kind == ProjectOperationKind.Delete) db.Projects.Remove(project);
+        if (operation.Kind == ProjectOperationKind.Delete)
+        {
+            foreach (var preview in await db.Projects.Where(p => p.ParentProjectId == project.Id).ToListAsync(ct))
+                if (!await db.Operations.AnyAsync(o => o.ProjectId == preview.Id && o.Kind == ProjectOperationKind.Delete && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
+                    db.Operations.Add(new ProjectOperation { ProjectId = preview.Id, Kind = ProjectOperationKind.Delete });
+            foreach (var registration in await db.PreviewEnvironments.Where(p => p.ProjectId == project.Id).ToListAsync(ct)) registration.ProjectId = null;
+            db.Projects.Remove(project);
+        }
         operation.State = ProjectOperationState.Completed;
         await db.SaveChangesAsync(ct);
     }
