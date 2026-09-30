@@ -25,3 +25,9 @@ The main workflow is demonstrable. The complete system prompt's hardened definit
 Compose projects select a repository-relative file and routed service. The worker builds local service contexts, retains encrypted manifests/immutable images, starts dependent services, checks HTTP/service health, and records service-prefixed logs/status. Stop/restart/delete and rollback share the owned stack lifecycle; named volumes survive deployment changes and project deletion. The dashboard configures Compose mode and shows each service.
 
 Thirty-two unit tests and one opt-in real Docker integration test pass. The integration test proves visibly different-version rollback and Redis persistence. A public WordPress/MariaDB stack also deployed through the API and serves its UI through nginx. See COMPOSE.md and MVP_VERIFICATION.md for supported features and limitations.
+
+## Automatic builds and built-in documentation
+
+Auto mode now uses a configured Dockerfile when present and otherwise builds with Railpack. Optional build/start command overrides are persisted and snapshotted. The worker supplies a default runtime PORT, isolates build process credentials, and reuses the existing health-check, routing, and retained-image rollback flow. The startup script installs the pinned builder and starts BuildKit.
+
+Public React documentation is available at `/docs`, including direct links from built API hosting, search, copyable code examples, mobile navigation, and guides for supported deployment workflows. Its dark theme matches the dashboard, and Documentation is separate from the project list. See [verification results](AUTO_AND_DOCS_VERIFICATION.md) for the backend, browser, launcher, and real Auto deployment checks.
