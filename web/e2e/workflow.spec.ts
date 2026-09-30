@@ -80,3 +80,23 @@ test('Compose WordPress opens its installer through the public route', async ({ 
   await expect(app).toHaveTitle(/WordPress/);
   await app.close();
 });
+
+test('retained employee Compose demo serves React and its database API', async ({ page }) => {
+  const token = process.env.ForgeDock__ApiToken;
+  if (!token) throw new Error('Load the management token with scripts/with-env.sh.');
+  const projectsResponse = await page.request.get('http://127.0.0.1:5080/api/projects', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const projects = await projectsResponse.json();
+  const project = projects.find((p: { repositoryUrl: string }) => p.repositoryUrl === 'https://github.com/nikolliervin/employee-management');
+  expect(project.deploymentMode).toBe('Compose');
+  const url = `http://${project.id.replaceAll('-', '')}.localhost:8088`;
+  await page.goto(url);
+  await expect(page.locator('body')).toContainText('Employee');
+  for (const resource of ['Employees', 'Departments']) {
+    const response = await page.request.get(`${url}/api/v1/${resource}`);
+    expect(response.status()).toBe(200);
+    expect((await response.json()).isSuccess).toBe(true);
+  }
+  await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/employee-management.png`, fullPage: true });
+});

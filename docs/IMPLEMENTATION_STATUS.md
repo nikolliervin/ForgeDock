@@ -8,7 +8,7 @@ The dashboard includes settings, encrypted write-only environment editing, deplo
 
 ## Verification
 
-Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption/process-execution tests pass. Three browser tests against the built frontend passed, including narrow-viewport layout and the workflow through login, project creation, secret editor, actual deployment, logs, routed response, stop, restart, deletion, and logout. EF migrations apply and the model has no pending changes. Anonymous API access is rejected, unsafe URLs are rejected, missing Dockerfile fails without replacing the active route, and encrypted variables reach Docker without appearing in persisted deployment logs. See MVP_VERIFICATION.md.
+Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption/process-execution tests pass. Four browser tests against the built frontend passed, including narrow-viewport layout and the workflow through login, project creation, secret editor, actual deployment, logs, routed response, stop, restart, deletion, and logout. EF migrations apply and the model has no pending changes. Anonymous API access is rejected, unsafe URLs are rejected, missing Dockerfile fails without replacing the active route, and encrypted variables reach Docker without appearing in persisted deployment logs. See MVP_VERIFICATION.md.
 
 ## Known limitations / remaining hardening
 
