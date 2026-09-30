@@ -30,6 +30,7 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
         model.Entity<ProjectEnvironment>().HasKey(e => new { e.ProjectId, e.Name });
         model.Entity<ProjectEnvironment>().HasOne<Project>().WithMany().HasForeignKey(e => e.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<Project>().Property(p => p.DeploymentMode).HasConversion<string>();
+        model.Entity<Project>().Property(p => p.RootDirectory).HasDefaultValue(".");
         model.Entity<Project>().Property(p => p.Name).HasMaxLength(100);
         model.Entity<Deployment>().Property(d => d.ServiceStatusJson).HasDefaultValue("[]");
         model.Entity<Deployment>().Property(d => d.State).HasConversion<string>();

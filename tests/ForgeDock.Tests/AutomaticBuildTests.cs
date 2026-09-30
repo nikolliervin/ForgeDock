@@ -47,6 +47,71 @@ public sealed class AutomaticBuildTests : IDisposable
         var old = DeploymentSnapshot.Deserialize("{\"RepositoryUrl\":\"https://github.com/example/app\",\"Branch\":\"main\",\"Dockerfile\":\"Dockerfile\",\"ContainerPort\":8080,\"HealthPath\":\"/\",\"ProtectedEnvironment\":{}}");
         Assert.Equal(DeploymentMode.Dockerfile, old.DeploymentMode);
         Assert.Equal("", old.StartCommand);
+        Assert.Equal(".", old.RootDirectory);
+    }
+
+    [Theory]
+    [InlineData("../outside")]
+    [InlineData("/tmp")]
+    [InlineData("backend/../frontend")]
+    [InlineData("backend//nested")]
+    [InlineData("backend\\nested")]
+    [InlineData("")]
+    public void RootDirectoryRejectsPathsOutsideTheRepository(string path)
+    {
+        Assert.NotEmpty(ProjectConfiguration.Validate("Demo", "https://github.com/example/app", "main", "Dockerfile", 3000, "/", rootDirectory: path));
+        Assert.Throws<InvalidOperationException>(() => SingleApplicationBuilder.ResolveRootDirectory(source, path));
+    }
+
+    [Fact]
+    public void RootDirectoryRejectsMissingDirectoriesAndSymlinkAncestors()
+    {
+        Assert.Equal(source, SingleApplicationBuilder.ResolveRootDirectory(source, "."));
+        Assert.Throws<InvalidOperationException>(() => SingleApplicationBuilder.ResolveRootDirectory(source, "missing"));
+        File.WriteAllText(Path.Combine(source, "file"), "contents");
+        Assert.Throws<InvalidOperationException>(() => SingleApplicationBuilder.ResolveRootDirectory(source, "file"));
+        var backend = Directory.CreateDirectory(Path.Combine(source, "backend")).FullName;
+        Directory.CreateSymbolicLink(Path.Combine(source, "linked"), backend);
+        Assert.Throws<InvalidOperationException>(() => SingleApplicationBuilder.ResolveRootDirectory(source, "linked"));
+        Assert.Throws<InvalidOperationException>(() => SingleApplicationBuilder.ResolveRootDirectory(source, "linked/missing"));
+        Assert.Equal(backend, SingleApplicationBuilder.ResolveRootDirectory(source, "backend"));
+        Assert.NotEmpty(ProjectConfiguration.Validate("Demo", "https://github.com/example/app", "main", "Dockerfile", 3000, "/", DeploymentMode.Compose, composeService: "web", rootDirectory: "backend"));
+    }
+
+    [Fact]
+    public async Task RailpackBuildsSelectedDirectoryWithLiteralVariablesAndRedactedLogs()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        var backend = Directory.CreateDirectory(Path.Combine(source, "backend")).FullName;
+        var executable = Path.Combine(source, "fake-build");
+        var captured = Path.Combine(source, "arguments");
+        await File.WriteAllTextAsync(executable, "#!/bin/sh\nprintf '%s\\0' \"$@\" > '" + captured + "'\npwd > '" + captured + ".cwd'\nprintf '%s\\0' \"$BUILDKIT_HOST\" \"${APP_VALUE-unset}\" > '" + captured + ".env'\nprintf '%s\\n' \"$@\"\n");
+        File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var protector = new SecretProtector(Convert.ToBase64String(new byte[32]));
+        var variables = new Dictionary<string, string> { ["APP_VALUE"] = "secret-first-line\nsecret-second-line", ["EMPTY"] = "", ["RAILPACK_NODE_VERSION"] = "22", ["LITERAL"] = "a=b; $(echo should-not-run)", ["BUILDKIT_HOST"] = "project-host" };
+        var project = new Project { DeploymentMode = DeploymentMode.Auto, RootDirectory = "backend" };
+        var snapshot = DeploymentSnapshot.Deserialize(DeploymentSnapshot.Create(project, variables.Select(e => new ProjectEnvironment { Name = e.Key, ProtectedValue = protector.Protect(e.Value) })).Serialize());
+        project.RootDirectory = "frontend";
+        Assert.Equal("backend", snapshot.RootDirectory);
+        var lines = new List<string>();
+        await new SingleApplicationBuilder(new ProcessRunner()).BuildAsync(snapshot, source, "test/image", project.Id, executable,
+            "docker-container://platform", line => { lines.Add(line); return Task.CompletedTask; }, CancellationToken.None,
+            snapshot.ProtectedEnvironment.ToDictionary(e => e.Key, e => protector.Unprotect(e.Value)));
+        var args = (await File.ReadAllTextAsync(captured)).Split('\0')[..^1];
+        var processEnvironment = (await File.ReadAllTextAsync(captured + ".env")).Split('\0');
+        Assert.Equal(backend, args.Last());
+        Assert.Equal(backend, (await File.ReadAllTextAsync(captured + ".cwd")).Trim());
+        Assert.Equal("docker-container://platform", processEnvironment[0]);
+        Assert.Equal("unset", processEnvironment[1]);
+        foreach (var (name, value) in variables)
+        {
+            var position = Array.IndexOf(args, $"{name}={value}");
+            Assert.True(position > 0);
+            Assert.Equal("--env", args[position - 1]);
+        }
+        Assert.Contains("Build root directory: backend", lines);
+        Assert.Contains("APP_VALUE=[REDACTED]", lines);
+        Assert.DoesNotContain(lines, line => line.Contains("secret-first-line") || line.Contains("secret-second-line"));
     }
 
     [Fact]

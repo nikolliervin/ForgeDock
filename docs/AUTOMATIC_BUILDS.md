@@ -1,6 +1,6 @@
 # Automatic builds
 
-Choose **Auto** when creating a project to deploy a public HTTPS repository without writing a Dockerfile. Auto checks the configured Dockerfile path (default `Dockerfile`) first. If the file exists, it uses Docker. Otherwise, it runs Railpack against the repository root. Existing projects retain their saved deployment type.
+Choose **Auto** when creating a project to deploy a public HTTPS repository without writing a Dockerfile. Auto checks the configured Dockerfile path (default `Dockerfile`) first. If the file exists, it uses Docker. Otherwise, it runs Railpack against the configured root directory. Existing projects retain their saved deployment type.
 
 ## Setup
 
@@ -10,11 +10,11 @@ The worker defaults to `.runtime/tools/railpack` under `ForgeDock__RuntimePath` 
 
 ## Project settings
 
-Set the repository, branch, container port, and HTTP health path. For Railpack builds, optional **Build command** and **Start command** fields override detection. They are passed to Railpack as literal arguments; Railpack executes application commands inside the build/runtime container. Repository `railpack.json` configuration is also supported. Overrides do not affect Dockerfile builds.
+Set the repository, branch, container port, and HTTP health path. **Root directory** defaults to `.` (the repository root). For independent applications in a monorepo, create one project with `backend` and another with `frontend`. Both Railpack and Dockerfile builds use the selected directory as their build context; the Dockerfile path is relative to it. Missing directories, absolute paths, parent traversal, and symbolic links are rejected. Compose keeps the repository root and uses service contexts from its manifest. For Railpack builds, optional **Build command** and **Start command** fields override detection. They are passed to Railpack as literal arguments; Railpack executes application commands inside the build/runtime container. Repository `railpack.json` configuration is also supported. Overrides do not affect Dockerfile builds.
 
 The runtime gets `PORT` set to the configured container port unless the project already has a saved `PORT` variable. Make your app listen on `0.0.0.0` at that port. Health checking and routing use the configured container port, so a saved `PORT` must agree with it.
 
-Project environment variables are runtime-only; ForgeDock does not pass them to Railpack builds. Platform credentials are excluded from the build process environment. Projects that need private package installation or secrets at build time require further integration. The build context is the repository root; use a Dockerfile or Compose for custom monorepo contexts.
+Saved project environment variables are passed to Railpack builds using literal `--env NAME=VALUE` arguments, including `RAILPACK_*` settings, and remain available at runtime. Values come from the queued deployment snapshot, stay encrypted at rest, and are redacted from build logs. Platform credentials are excluded from the build process environment. Frontend build variables (for example `VITE_*`) can become public in generated assets; save only intended public values under those names. Dockerfile builds do not receive saved variables; Compose variables are available for manifest interpolation.
 
 ## Deployment behavior
 

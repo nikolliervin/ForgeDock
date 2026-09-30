@@ -7,7 +7,7 @@ public static partial class ProjectConfiguration
 {
     public static IReadOnlyList<string> Validate(string name, string repositoryUrl, string branch,
         string dockerfile, int containerPort, string healthPath, DeploymentMode deploymentMode = DeploymentMode.Dockerfile,
-        string composeFile = "docker-compose.yml", string composeService = "", string buildCommand = "", string startCommand = "")
+        string composeFile = "docker-compose.yml", string composeService = "", string buildCommand = "", string startCommand = "", string rootDirectory = ".")
     {
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100) errors.Add("Name must contain 1–100 characters.");
@@ -20,6 +20,10 @@ public static partial class ProjectConfiguration
             branch.Contains("..") || branch.Contains("//") || branch.EndsWith('/') || branch.EndsWith('.') ||
             branch.EndsWith(".lock", StringComparison.OrdinalIgnoreCase))
             errors.Add("Branch must be a valid named Git branch.");
+        if (rootDirectory != "." && !IsRepositoryPath(rootDirectory))
+            errors.Add("Root directory must be '.' or a relative directory within the repository.");
+        if (deploymentMode == DeploymentMode.Compose && rootDirectory != ".")
+            errors.Add("Compose builds use the repository root; configure service contexts in the Compose file.");
         if (!Enum.IsDefined(deploymentMode)) errors.Add("Unsupported deployment mode.");
         if (deploymentMode is DeploymentMode.Dockerfile or DeploymentMode.Auto && !IsRepositoryPath(dockerfile))
             errors.Add("Dockerfile must be a relative path within the repository.");

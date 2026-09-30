@@ -13,6 +13,7 @@ public sealed class Project
     public string ComposeService { get; set; } = "";
     public string BuildCommand { get; set; } = "";
     public string StartCommand { get; set; } = "";
+    public string RootDirectory { get; set; } = ".";
     public string Dockerfile { get; set; } = "Dockerfile";
     public int ContainerPort { get; set; } = 8080;
     public string HealthPath { get; set; } = "/";

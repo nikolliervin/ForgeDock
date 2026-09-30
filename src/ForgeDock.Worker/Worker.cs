@@ -170,7 +170,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         }
         var validation = ForgeDock.Application.ProjectConfiguration.Validate(project.Name, snapshot.RepositoryUrl,
             snapshot.Branch, snapshot.Dockerfile, snapshot.ContainerPort, snapshot.HealthPath, snapshot.DeploymentMode,
-            snapshot.ComposeFile, snapshot.ComposeService, snapshot.BuildCommand, snapshot.StartCommand);
+            snapshot.ComposeFile, snapshot.ComposeService, snapshot.BuildCommand, snapshot.StartCommand, snapshot.RootDirectory);
         if (validation.Count > 0) throw new InvalidOperationException(string.Join(" ", validation));
         var root = Path.GetFullPath(configuration["ForgeDock:RuntimePath"] ?? ".runtime");
         var source = Path.Combine(root, "sources", deployment.Id.ToString("N"));
@@ -204,7 +204,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             var railpack = configuration["ForgeDock:RailpackPath"] ?? Path.Combine(root, "tools", "railpack");
             var buildkit = configuration["ForgeDock:BuildKitHost"] ?? "docker-container://forgedock-buildkit";
             await new SingleApplicationBuilder(runner).BuildAsync(snapshot, source, deployment.ImageTag,
-                project.Id, railpack, buildkit, Log, ct);
+                project.Id, railpack, buildkit, Log, ct,
+                snapshot.ProtectedEnvironment.ToDictionary(e => e.Key, e => protector.Unprotect(e.Value)));
         }
         await Stage(DeploymentState.Starting);
         Directory.CreateDirectory(Path.Combine(root, "secrets"));
