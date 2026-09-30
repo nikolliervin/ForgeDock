@@ -129,7 +129,7 @@ public sealed partial class Worker
         var root = Path.GetFullPath(configuration["ForgeDock:RuntimePath"] ?? ".runtime");
         var route = Path.Combine(root, "routes", $"{projectId:N}.conf"); Directory.CreateDirectory(Path.GetDirectoryName(route)!);
         var before = File.Exists(route) ? await File.ReadAllTextAsync(route, ct) : null;
-        var config = $"server {{ listen 80; server_name {projectId:N}.localhost; location / {{ proxy_pass http://{ComposeDefinition.ContainerName(projectId, snapshot.ComposeService)}:{snapshot.ContainerPort}; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Host $http_host; proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; }} }}";
+        var config = $"server {{ listen 80; server_name {projectId:N}.localhost; location / {{ resolver 127.0.0.11 valid=10s; set $forgedock_upstream http://{ComposeDefinition.ContainerName(projectId, snapshot.ComposeService)}:{snapshot.ContainerPort}; proxy_pass $forgedock_upstream; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Host $http_host; proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; }} }}";
         await File.WriteAllTextAsync(route + ".tmp", config, ct); File.Move(route + ".tmp", route, true);
         var proxy = configuration["ForgeDock:ProxyContainer"] ?? "forgedock-proxy";
         try

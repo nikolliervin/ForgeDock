@@ -28,7 +28,24 @@ start_owned() {
 umask 077
 printf 'POSTGRES_USER=forgedock\nPOSTGRES_DB=forgedock\nPOSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD" > .runtime/secrets/postgres.env
 start_owned forgedock-postgres --env-file .runtime/secrets/postgres.env -p 127.0.0.1:5432:5432 -v forgedock-postgres-data:/var/lib/postgresql/data postgres:17-alpine
+# Resolve application containers at request time so retained routes to missing
+# containers cannot prevent nginx from starting. Keep a backup of older routes.
+for route in .runtime/routes/*.conf; do
+  [[ -f "$route" ]] || continue
+  content=$(<"$route")
+  pattern='proxy_pass[[:space:]]+http://(forgedock-[a-zA-Z0-9-]+:[0-9]+);'
+  if [[ $content =~ $pattern ]]; then
+    original=${BASH_REMATCH[0]}
+    upstream=${BASH_REMATCH[1]}
+    replacement="resolver 127.0.0.11 valid=10s; set \$forgedock_upstream http://$upstream; proxy_pass \$forgedock_upstream;"
+    [[ -e "$route.before-dns" ]] || cp "$route" "$route.before-dns"
+    printf '%s\n' "${content/"$original"/"$replacement"}" > "$route.tmp"
+    mv "$route.tmp" "$route"
+  fi
+done
 start_owned forgedock-proxy -p 127.0.0.1:8088:80 -v "$PWD/.runtime/routes:/etc/nginx/conf.d:ro,z" nginx:alpine
+docker exec forgedock-proxy nginx -t
+docker exec forgedock-proxy nginx -s reload
 rm -f .runtime/secrets/postgres.env
 for attempt in {1..30}; do
   if docker exec forgedock-postgres pg_isready -U forgedock -d forgedock >/dev/null; then echo 'PostgreSQL and nginx started.'; exit 0; fi
