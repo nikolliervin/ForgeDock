@@ -23,6 +23,7 @@ public sealed class ProcessRunner
         }
         if (environment is not null)
             foreach (var (name, value) in environment) info.Environment[name] = value;
+        info.Environment.Remove("ForgeDock__GitHubToken");
         info.Environment["GIT_TERMINAL_PROMPT"] = "0";
         using var process = Process.Start(info) ?? throw new InvalidOperationException($"Unable to start {executable}.");
         var output = new StringBuilder();

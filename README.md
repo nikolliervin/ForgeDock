@@ -1,6 +1,6 @@
 # ForgeDock
 
-A single-host deployment platform for public HTTPS Git repositories with automatic Railpack builds, Dockerfiles, or Docker Compose stacks. The .NET API stores projects and queued deployments in PostgreSQL; a Linux worker builds and starts Docker containers and switches nginx routes after HTTP health checks. React provides the management dashboard.
+A single-host deployment platform for public HTTPS Git repositories and private GitHub repositories with automatic Railpack builds, Dockerfiles, or Docker Compose stacks. The .NET API stores projects and queued deployments in PostgreSQL; a Linux worker builds and starts Docker containers and switches nginx routes after HTTP health checks. React provides the management dashboard.
 
 Run the local app with one command (requires the prerequisites in [development setup](docs/DEVELOPMENT.md)):
 
@@ -38,3 +38,7 @@ The built-in React documentation lives at http://127.0.0.1:5173/docs and is avai
 Custom application domains and automatic HTTPS are available through the project **Domains** tab after configuring a public server. See [custom domains setup](docs/CUSTOM_DOMAINS.md). Local development remains on loopback by default.
 
 See [application metrics](docs/METRICS.md) for resource history, collection behavior, and bulk environment imports.
+
+### Private GitHub repositories
+
+Set `ForgeDock__GitHubToken` in the server `.env` to a fine-grained personal access token scoped to the repositories you deploy with **Contents: Read-only**. Obtain any required organization approval, then restart the worker. Use the normal `https://github.com/owner/repo.git` project URL. The shared worker credential supports cloning and fetching specific commits for Auto, Dockerfile, and Compose builds; it is not saved in project configuration or passed to builds or application containers. Replace it in `.env` when rotating an expired token. SSH, GitHub Enterprise, private submodules, and package registry authentication are not covered.

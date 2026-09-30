@@ -1,6 +1,6 @@
 # Automatic builds
 
-Choose **Auto** when creating a project to deploy a public HTTPS repository without writing a Dockerfile. Auto checks the configured Dockerfile path (default `Dockerfile`) first. If the file exists, it uses Docker. Otherwise, it runs Railpack against the configured root directory. Existing projects retain their saved deployment type.
+Choose **Auto** when creating a project to deploy a public HTTPS repository or a private GitHub repository (configure ForgeDock__GitHubToken on the worker) without writing a Dockerfile. Auto checks the configured Dockerfile path (default `Dockerfile`) first. If the file exists, it uses Docker. Otherwise, it runs Railpack against the configured root directory. Existing projects retain their saved deployment type.
 
 ## Setup
 

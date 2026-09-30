@@ -36,9 +36,10 @@ public sealed partial class Worker
             if (deployment.RollbackSourceId is null)
             {
                 await Stage(DeploymentState.Cloning); Directory.CreateDirectory(Path.GetDirectoryName(source)!);
-                await Run("git", "-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
-                    "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source);
-                await ReadRevision(deployment, source, ct);
+                await GitRepository.RunAsync(runner, snapshot.RepositoryUrl, configuration["ForgeDock:GitHubToken"],
+                    ["-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
+                    "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source], Log, ct);
+                await ReadRevision(deployment, snapshot.RepositoryUrl, source, ct);
                 await Stage(DeploymentState.Building);
                 model = await ComposeEngine.PrepareAsync(source, project.Id, deployment.Id, snapshot, Log, ct);
                 deployment.ProtectedComposeManifest = protector.Protect(model.ToJsonString());

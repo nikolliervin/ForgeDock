@@ -165,9 +165,9 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task ReadRevision(Deployment deployment, string source, CancellationToken ct)
+    private async Task ReadRevision(Deployment deployment, string repositoryUrl, string source, CancellationToken ct)
     {
-        Task<string> Git(params string[] args) => runner.RunAsync("git", args, null, _ => Task.CompletedTask, ct, inheritEnvironment: false);
+        Task<string> Git(params string[] args) => GitRepository.RunAsync(runner, repositoryUrl, configuration["ForgeDock:GitHubToken"], args, _ => Task.CompletedTask, ct);
         if (deployment.RequestedCommit is { } commit)
         {
             if (!ForgeDock.Application.ProjectConfiguration.IsCommitSha(commit))
@@ -223,9 +223,10 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             await Stage(DeploymentState.Cloning);
             Directory.CreateDirectory(Path.GetDirectoryName(source)!);
             // Redirects and alternate Git protocols are disabled; operators must also restrict worker egress.
-            await Run("git", "-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
-                "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source);
-            await ReadRevision(deployment, source, ct);
+            await GitRepository.RunAsync(runner, snapshot.RepositoryUrl, configuration["ForgeDock:GitHubToken"],
+                    ["-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
+                "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source], Log, ct);
+            await ReadRevision(deployment, snapshot.RepositoryUrl, source, ct);
             await Stage(DeploymentState.Building);
             deployment.ImageTag = $"forgedock/{project.Id:N}:{deployment.Id:N}";
             var railpack = configuration["ForgeDock:RailpackPath"] ?? Path.Combine(root, "tools", "railpack");

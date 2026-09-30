@@ -15,7 +15,7 @@ Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption
 - Crash-time nginx/database reconciliation and stronger execution fencing/concurrent lifecycle locking are not complete.
 - Application monitoring/log collection shares the serial deployment worker and pauses during builds.
 - Source/image/log retention and cleanup automation are absent; deleting a project removes its containers, route, and DB history but retains images/source directories.
-- Single trusted operator only; no private Git credentials, hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
+- Single trusted operator only; private GitHub access uses a shared worker token; no hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
 - Git hostname checks do not fully address DNS rebinding/private-address resolution; restrict worker egress for untrusted inputs.
 
 The main workflow is demonstrable. The complete system prompt's hardened definition of done is not claimed.
