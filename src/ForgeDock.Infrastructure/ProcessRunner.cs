@@ -6,7 +6,8 @@ namespace ForgeDock.Infrastructure;
 public sealed class ProcessRunner
 {
     public async Task<string> RunAsync(string executable, IEnumerable<string> arguments,
-        string? directory, Func<string, Task> log, CancellationToken cancellationToken, bool inheritEnvironment = true)
+        string? directory, Func<string, Task> log, CancellationToken cancellationToken, bool inheritEnvironment = true,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(15));
@@ -20,6 +21,8 @@ public sealed class ProcessRunner
             info.Environment.Clear();
             foreach (var (name, value) in allowed) if (value is not null) info.Environment[name] = value;
         }
+        if (environment is not null)
+            foreach (var (name, value) in environment) info.Environment[name] = value;
         info.Environment["GIT_TERMINAL_PROMPT"] = "0";
         using var process = Process.Start(info) ?? throw new InvalidOperationException($"Unable to start {executable}.");
         var output = new StringBuilder();

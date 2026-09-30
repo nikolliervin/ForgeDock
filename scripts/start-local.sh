@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-for command in dotnet npm docker git openssl make setsid; do
+for command in dotnet npm docker git openssl make setsid curl tar sha256sum install; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "Missing prerequisite: $command. See docs/DEVELOPMENT.md." >&2
     exit 1
@@ -15,6 +15,7 @@ fi
 
 make init
 make infra
+make railpack
 make migrate
 npm --prefix web ci
 dotnet build ForgeDock.sln
@@ -43,7 +44,7 @@ pids+=("$!")
 
 printf '\nStarting ForgeDock at http://127.0.0.1:5173\n'
 echo 'Sign in with ForgeDock__ApiToken from .env. Press Ctrl+C to stop the app.'
-echo 'PostgreSQL and nginx stay running for the next launch.'
+echo 'PostgreSQL, nginx, and BuildKit stay running for the next launch.'
 
 status=0
 wait -n "${pids[@]}" || status=$?

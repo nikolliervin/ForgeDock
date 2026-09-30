@@ -7,7 +7,7 @@ public static partial class ProjectConfiguration
 {
     public static IReadOnlyList<string> Validate(string name, string repositoryUrl, string branch,
         string dockerfile, int containerPort, string healthPath, DeploymentMode deploymentMode = DeploymentMode.Dockerfile,
-        string composeFile = "docker-compose.yml", string composeService = "")
+        string composeFile = "docker-compose.yml", string composeService = "", string buildCommand = "", string startCommand = "")
     {
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100) errors.Add("Name must contain 1–100 characters.");
@@ -21,7 +21,7 @@ public static partial class ProjectConfiguration
             branch.EndsWith(".lock", StringComparison.OrdinalIgnoreCase))
             errors.Add("Branch must be a valid named Git branch.");
         if (!Enum.IsDefined(deploymentMode)) errors.Add("Unsupported deployment mode.");
-        if (deploymentMode == DeploymentMode.Dockerfile && !IsRepositoryPath(dockerfile))
+        if (deploymentMode is DeploymentMode.Dockerfile or DeploymentMode.Auto && !IsRepositoryPath(dockerfile))
             errors.Add("Dockerfile must be a relative path within the repository.");
         if (deploymentMode == DeploymentMode.Compose)
         {
@@ -29,6 +29,9 @@ public static partial class ProjectConfiguration
             if (string.IsNullOrEmpty(composeService) || composeService.Length > 100 || !ServicePattern().IsMatch(composeService))
                 errors.Add("Select the Compose service to expose through the application route.");
         }
+        foreach (var command in new[] { buildCommand, startCommand })
+            if (command is null || command.Length > 4096 || command.Any(char.IsControl))
+                errors.Add("Build and start commands must be single-line values up to 4096 characters.");
         if (containerPort is < 1 or > 65535) errors.Add("Container port must be between 1 and 65535.");
         if (string.IsNullOrEmpty(healthPath) || !healthPath.StartsWith('/') || healthPath.StartsWith("//") ||
             healthPath.Contains('\\') || healthPath.Any(char.IsControl)) errors.Add("Health path must be a local absolute HTTP path.");

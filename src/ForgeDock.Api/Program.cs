@@ -41,14 +41,14 @@ var api = app.MapGroup("/api").RequireAuthorization();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(
-        p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService)).ToListAsync(ct));
+        p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService, p.BuildCommand, p.StartCommand)).ToListAsync(ct));
 api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, CancellationToken ct) =>
 {
     var errors = request.Validate();
     if (errors.Count > 0) return Results.ValidationProblem(new Dictionary<string, string[]> { ["configuration"] = errors.ToArray() });
     var project = new Project { Name = request.Name, RepositoryUrl = request.RepositoryUrl, Branch = request.Branch,
         DeploymentMode = request.DeploymentMode, ComposeFile = request.ComposeFile, ComposeService = request.ComposeService,
-        Dockerfile = request.Dockerfile, ContainerPort = request.ContainerPort, HealthPath = request.HealthPath };
+        BuildCommand = request.BuildCommand, StartCommand = request.StartCommand, Dockerfile = request.Dockerfile, ContainerPort = request.ContainerPort, HealthPath = request.HealthPath };
     db.Projects.Add(project);
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/projects/{project.Id}", ProjectResponse.From(project));
@@ -64,6 +64,7 @@ api.MapPut("/projects/{id:guid}", async (Guid id, ProjectRequest request, ForgeD
     if (project is null) return Results.NotFound();
     project.Name = request.Name; project.RepositoryUrl = request.RepositoryUrl; project.Branch = request.Branch;
     project.DeploymentMode = request.DeploymentMode; project.ComposeFile = request.ComposeFile; project.ComposeService = request.ComposeService;
+    project.BuildCommand = request.BuildCommand; project.StartCommand = request.StartCommand;
     project.Dockerfile = request.Dockerfile; project.ContainerPort = request.ContainerPort; project.HealthPath = request.HealthPath;
     await db.SaveChangesAsync(ct);
     return Results.Ok(ProjectResponse.From(project));
@@ -157,17 +158,17 @@ public record OperationRequest(ProjectOperationKind Kind);
 
 public record ProjectRequest(string Name, string RepositoryUrl, string Branch = "main", string Dockerfile = "Dockerfile",
     int ContainerPort = 8080, string HealthPath = "/", DeploymentMode DeploymentMode = DeploymentMode.Dockerfile,
-    string ComposeFile = "docker-compose.yml", string ComposeService = "")
+    string ComposeFile = "docker-compose.yml", string ComposeService = "", string BuildCommand = "", string StartCommand = "")
 {
     public IReadOnlyList<string> Validate() => ProjectConfiguration.Validate(Name ?? "", RepositoryUrl ?? "", Branch ?? "",
-        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "");
+        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "", BuildCommand, StartCommand);
 }
 public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string Branch, string Dockerfile,
     int ContainerPort, string HealthPath, Guid? ActiveDeploymentId, string HealthStatus,
-    DeploymentMode DeploymentMode, string ComposeFile, string ComposeService)
+    DeploymentMode DeploymentMode, string ComposeFile, string ComposeService, string BuildCommand, string StartCommand)
 {
     public static ProjectResponse From(Project p) => new(p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile,
-        p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService);
+        p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService, p.BuildCommand, p.StartCommand);
 }
 public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services)

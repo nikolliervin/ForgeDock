@@ -163,7 +163,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             return;
         }
         var validation = ForgeDock.Application.ProjectConfiguration.Validate(project.Name, snapshot.RepositoryUrl,
-            snapshot.Branch, snapshot.Dockerfile, snapshot.ContainerPort, snapshot.HealthPath);
+            snapshot.Branch, snapshot.Dockerfile, snapshot.ContainerPort, snapshot.HealthPath, snapshot.DeploymentMode,
+            snapshot.ComposeFile, snapshot.ComposeService, snapshot.BuildCommand, snapshot.StartCommand);
         if (validation.Count > 0) throw new InvalidOperationException(string.Join(" ", validation));
         var root = Path.GetFullPath(configuration["ForgeDock:RuntimePath"] ?? ".runtime");
         var source = Path.Combine(root, "sources", deployment.Id.ToString("N"));
@@ -192,18 +193,12 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             await Run("git", "-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
                 "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source);
             deployment.CommitSha = await Run("git", "-C", source, "rev-parse", "HEAD");
-            var dockerfile = Path.Combine(source, snapshot.Dockerfile);
-            if (!File.Exists(dockerfile)) throw new InvalidOperationException("Configured Dockerfile is missing from the repository.");
-            var current = new FileInfo(dockerfile) as FileSystemInfo;
-            while (current is not null && current.FullName != source)
-            {
-                if (current.LinkTarget is not null) throw new InvalidOperationException("Dockerfile path must not contain symbolic links.");
-                current = current is FileInfo file ? file.Directory : ((DirectoryInfo)current).Parent;
-            }
             await Stage(DeploymentState.Building);
             deployment.ImageTag = $"forgedock/{project.Id:N}:{deployment.Id:N}";
-            await Run("docker", "build", "--label", "io.forgedock.managed=true", "--label", $"io.forgedock.project={project.Id}",
-                "-t", deployment.ImageTag, "-f", dockerfile, source);
+            var railpack = configuration["ForgeDock:RailpackPath"] ?? Path.Combine(root, "tools", "railpack");
+            var buildkit = configuration["ForgeDock:BuildKitHost"] ?? "docker-container://forgedock-buildkit";
+            await new SingleApplicationBuilder(runner).BuildAsync(snapshot, source, deployment.ImageTag,
+                project.Id, railpack, buildkit, Log, ct);
         }
         await Stage(DeploymentState.Starting);
         Directory.CreateDirectory(Path.Combine(root, "secrets"));
@@ -213,8 +208,12 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             using (var stream = new FileStream(environmentFile, new FileStreamOptions { Mode = FileMode.CreateNew,
                 Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite }))
             using (var writer = new StreamWriter(stream))
+            {
+                if (snapshot.DeploymentMode == DeploymentMode.Auto && !snapshot.ProtectedEnvironment.ContainsKey("PORT"))
+                    await writer.WriteLineAsync($"PORT={snapshot.ContainerPort}");
                 foreach (var (name, value) in snapshot.ProtectedEnvironment)
                     await writer.WriteLineAsync($"{name}={protector.Unprotect(value)}");
+            }
             await Run("docker", "create", "--name", container, "--network", network, "--label", "io.forgedock.managed=true",
                 "--label", $"io.forgedock.project={project.Id}", "--label", $"io.forgedock.deployment={deployment.Id}",
                 "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true", "--memory", "512m", "--cpus", "1", "--pids-limit", "256",

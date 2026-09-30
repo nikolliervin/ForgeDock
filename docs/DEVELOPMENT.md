@@ -2,9 +2,12 @@
 
 Prerequisites: Linux, .NET 10 SDK, Node 22.12+ and npm, Git, Docker Engine, OpenSSL, Bash, and Make. Start Docker (`sudo systemctl start docker` on Fedora) and ensure your user can access it. Docker access grants extensive host privileges.
 
+For one-command startup, run `./scripts/start-local.sh`. It also sets up Railpack and BuildKit for Auto builds.
+
 ```bash
 make init
 make infra
+make railpack # optional for Auto builds
 make migrate
 npm --prefix web ci
 ```

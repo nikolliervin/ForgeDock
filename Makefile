@@ -1,4 +1,4 @@
-.PHONY: init infra migrate api worker web test build e2e compose docker-test
+.PHONY: init infra migrate api worker web test build e2e compose docker-test railpack
 init:
 	bash scripts/init-local.sh
 infra:
@@ -28,3 +28,6 @@ compose:
 
 docker-test:
 	FORGEDOCK_DOCKER_TESTS=1 dotnet test tests/ForgeDock.Tests
+
+railpack:
+	bash scripts/install-railpack.sh
