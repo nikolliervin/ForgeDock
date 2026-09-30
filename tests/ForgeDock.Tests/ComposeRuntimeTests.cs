@@ -48,6 +48,9 @@ public class ComposeRuntimeTests
                 $"http://{ComposeDefinition.ContainerName(project, "web")}:3000/");
             Assert.Contains("version 1", await Page());
             await Docker("exec", ComposeDefinition.ContainerName(project, "store"), "redis-cli", "SET", "retained", "original-data");
+            var beforeRestart = await Docker("inspect", "--format", "{{.Id}}", ComposeDefinition.ContainerName(project, "web"));
+            await engine.StartAsync(first, project, Log, CancellationToken.None);
+            Assert.NotEqual(beforeRestart, await Docker("inspect", "--format", "{{.Id}}", ComposeDefinition.ContainerName(project, "web")));
             var statuses = await engine.StatusAsync(project, CancellationToken.None);
             Assert.Equal(2, statuses.Count); Assert.All(statuses, status => Assert.Equal("running", status.State));
             await File.WriteAllTextAsync(Path.Combine(source, "web", "version.txt"), "version 2");

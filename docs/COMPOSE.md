@@ -10,7 +10,7 @@ The worker resolves Compose using saved project variables as interpolation input
 
 Host-published Compose ports are removed. Only the selected public service joins ForgeDock's ingress network. Original service names and aliases work on the private stack networks. Container names and network/volume names are rewritten into the owned project namespace; explicitly declared container names do not collide with other apps. All managed resources receive ownership labels, checked before operations.
 
-Named volumes are stable across deployments, stop, restart, rollback, and project deletion. Deletion removes stack containers/private networks and DB metadata but deliberately does not remove volumes. Back up data independently. Rollback restores retained images/configuration, not database contents or schema. Incompatible schema migrations require application-specific recovery.
+Explicit anonymous Compose mounts are converted into stable owned named volumes; implicit image-declared anonymous volumes keep Compose behavior. Named volumes are stable across deployments, stop, restart, rollback, and project deletion. Deletion removes stack containers/private networks and DB metadata but deliberately does not remove volumes. Back up data independently. Rollback restores retained images/configuration, not database contents or schema. Incompatible schema migrations require application-specific recovery.
 
 ## Lifecycle
 
@@ -22,9 +22,9 @@ Stop halts the stack. Restart replays the active retained manifest. Rollback rep
 
 ## Supported / rejected configuration
 
-Supported: multiple services, images and repository-local builds (including targets), dependencies and health checks, private networks, named local volumes, repository-local bind mounts, and repository-file configs/secrets. Repository paths cannot escape the checkout or traverse symbolic links. Only one replica per service is supported.
+Supported: multiple services, images and repository-local builds (including targets), dependencies and health checks, private networks, named local volumes, repository-local bind mounts, and repository-file configs/secrets mapped to read-only SELinux-aware bind mounts. Repository paths cannot escape the checkout or traverse symbolic links. Only one replica per service is supported.
 
-Rejected: privileged containers, host namespaces/networking, added capabilities, device/socket/host filesystem mounts, external volumes/networks, custom drivers/options, profiles, SSH-forwarded builds, additional build contexts, build entitlements/outputs, and lifecycle hooks. Original host port mappings are intentionally ignored. Each service defaults to a 2 GiB memory limit, one CPU, 256 PIDs, restricted default capabilities (retaining those needed by database initialization), and no-new-privileges. Operators remain trusted; arbitrary builds are not tenant-isolated.
+Rejected: privileged containers, host namespaces/networking, added capabilities, device/socket/host filesystem mounts, external volumes/networks, custom drivers/options, profiles, SSH-forwarded builds, build secrets, additional build contexts, build entitlements/outputs, and lifecycle hooks. Original host port mappings are intentionally ignored. Each service defaults to a 2 GiB memory limit, one CPU, 256 PIDs, restricted default capabilities (retaining those needed by database initialization), and no-new-privileges. Operators remain trusted; arbitrary builds are not tenant-isolated.
 
 ## Tooling
 

@@ -60,3 +60,9 @@ Docker initially had no socket; starting the installed service resolved this. Th
 ## Limits of evidence
 
 Rollback was verified against a retained image from the same upstream commit; the actual upstream/container switch is proven, but a changed-page two-version test remains. Unclean crash during route switching, Docker daemon restart, exhaustive DB failure recovery, distributed worker fencing, concurrent management requests, and production remote TLS exposure were not tested. Periodic logs are bounded polling and do not guarantee complete delivery. See SECURITY.md and IMPLEMENTATION_STATUS.md before public exposure.
+
+## Compose verification
+
+32 unit tests and one opt-in Docker integration test pass. The integration runs two versions, restores retained images, recovers after failed startup, verifies forced container recreation, mounts repository secret files, preserves Redis data across stop/restart/rollback, and retains named volumes after stack deletion.
+
+The public docker/awesome-compose WordPress/MariaDB stack deployed and restarted successfully. Browser verification follows the root URL to `/wp-admin/install.php`, preserves port 8088, and loads the WordPress installation page. The existing Dockerfile workflow and mobile layout checks also pass. A repair migration fixes empty service-status JSON in deployments created before Compose support; historical deployment API requests now return successfully.

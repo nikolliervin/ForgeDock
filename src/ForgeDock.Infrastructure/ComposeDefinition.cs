@@ -42,7 +42,7 @@ public static partial class ComposeDefinition
                 build["context"] = RepositoryPath(source, context);
                 if (build.ContainsKey("dockerfile")) RepositoryPath(source,
                     Path.Combine(build["context"]!.GetValue<string>(), build["dockerfile"]!.GetValue<string>()));
-                foreach (var key in new[] { "ssh", "entitlements", "additional_contexts", "outputs", "cache_to" })
+                foreach (var key in new[] { "ssh", "entitlements", "additional_contexts", "outputs", "cache_to", "secrets" })
                     if (build.ContainsKey(key)) throw new InvalidOperationException($"Unsupported Compose build feature: {key}.");
                 if (build["network"]?.GetValue<string>() == "host") throw new InvalidOperationException("Host networking during builds is not supported.");
                 build["labels"] = Labels(build["labels"], projectId);
@@ -58,8 +58,18 @@ public static partial class ComposeDefinition
                         mount["source"] = RepositoryPath(source, mount["source"]!.GetValue<string>());
                         mount["bind"] = new JsonObject { ["create_host_path"] = false, ["selinux"] = "z" };
                     }
-                    else if (type != "volume" || string.IsNullOrEmpty(mount["source"]?.GetValue<string>()))
-                        throw new InvalidOperationException("Only repository bind mounts and named volumes are supported.");
+                    else if (type == "volume")
+                    {
+                        if (string.IsNullOrEmpty(mount["source"]?.GetValue<string>()))
+                        {
+                            var target = mount["target"]?.GetValue<string>() ?? throw new InvalidOperationException("Volume target is missing.");
+                            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(name + target)))[..16].ToLowerInvariant();
+                            var key = "anonymous-" + hash;
+                            model["volumes"] ??= new JsonObject(); model["volumes"]!.AsObject()[key] = new JsonObject();
+                            mount["source"] = key;
+                        }
+                    }
+                    else throw new InvalidOperationException("Only repository bind mounts and volumes are supported.");
                 }
             if (service["env_file"] is JsonArray files)
                 foreach (var file in files)
@@ -77,14 +87,32 @@ public static partial class ComposeDefinition
         networks["forgedock_ingress"] = new JsonObject { ["external"] = true, ["name"] = platformNetwork };
         services[routedService]!["networks"]!.AsObject()["forgedock_ingress"] = new JsonObject();
         foreach (var type in new[] { "secrets", "configs" })
-            if (model[type] is JsonObject resources)
-                foreach (var (_, node) in resources)
+        {
+            if (model[type] is not JsonObject resources) continue;
+            foreach (var (_, node) in resources)
+            {
+                var resource = node!.AsObject();
+                if (resource["external"]?.GetValue<bool>() == true || resource.ContainsKey("environment") || resource.ContainsKey("content"))
+                    throw new InvalidOperationException("Compose secrets/configs must reference repository files.");
+                resource["file"] = RepositoryPath(source, resource["file"]!.GetValue<string>());
+            }
+            foreach (var (_, serviceNode) in services)
+            {
+                var service = serviceNode!.AsObject();
+                if (service[type] is not JsonArray references) continue;
+                service["volumes"] ??= new JsonArray();
+                foreach (var reference in references)
                 {
-                    var resource = node!.AsObject();
-                    if (resource["external"]?.GetValue<bool>() == true || resource.ContainsKey("environment") || resource.ContainsKey("content"))
-                        throw new InvalidOperationException("Compose secrets/configs must reference repository files.");
-                    resource["file"] = RepositoryPath(source, resource["file"]!.GetValue<string>());
+                    var key = reference!["source"]!.GetValue<string>();
+                    var target = reference["target"]?.GetValue<string>() ?? key;
+                    if (!Path.IsPathRooted(target)) target = (type == "secrets" ? "/run/secrets/" : "/") + target;
+                    service["volumes"]!.AsArray().Add(new JsonObject { ["type"] = "bind", ["source"] = resources[key]!["file"]!.GetValue<string>(),
+                        ["target"] = target, ["read_only"] = true, ["bind"] = new JsonObject { ["create_host_path"] = false, ["selinux"] = "z" } });
                 }
+                service.Remove(type);
+            }
+            model.Remove(type);
+        }
         return model;
     }
 

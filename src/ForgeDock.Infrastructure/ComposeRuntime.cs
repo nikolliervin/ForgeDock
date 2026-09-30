@@ -68,13 +68,23 @@ public sealed class ComposeRuntime(ProcessRunner runner, SecretProtector protect
         await AssertOwnershipAsync(model, projectId, ct);
         foreach (var (_, service) in model["services"]!.AsObject())
             await Docker(["image", "inspect", service!["image"]!.GetValue<string>()], ct);
-        await WithManifest(model, projectId, ["up", "--detach", "--wait", "--wait-timeout", "180", "--no-build", "--pull", "never", "--remove-orphans"], log, ct);
+        await WithManifest(model, projectId, ["up", "--detach", "--force-recreate", "--wait", "--wait-timeout", "180", "--no-build", "--pull", "never", "--remove-orphans"], log, ct);
     }
 
     public async Task StopAsync(JsonObject model, Guid projectId, bool remove, Func<string, Task> log, CancellationToken ct)
     {
         await AssertOwnershipAsync(model, projectId, ct);
         await WithManifest(model, projectId, remove ? ["down", "--remove-orphans"] : ["stop"], log, ct);
+        if (remove)
+        {
+            var names = await Docker(["network", "ls", "--filter", $"label=io.forgedock.project={projectId}", "--format", "{{.Name}}"], ct);
+            foreach (var name in names.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var info = JsonNode.Parse(await Docker(["network", "inspect", name], ct))!.AsArray()[0]!;
+                CheckLabels(info["Labels"], projectId);
+                await Docker(["network", "rm", name], ct);
+            }
+        }
     }
 
     public Task LogsAsync(JsonObject model, Guid projectId, Func<string, Task> log, CancellationToken ct) =>
@@ -83,9 +93,9 @@ public sealed class ComposeRuntime(ProcessRunner runner, SecretProtector protect
     private async Task WithManifest(JsonObject model, Guid projectId, string[] args, Func<string, Task> log, CancellationToken ct)
     {
         var manifest = await PrivateFile(model.ToJsonString(), ct);
-        var environment = await PrivateFile("", ct);
-        try { await Compose(manifest, environment, ComposeDefinition.StackName(projectId), args, RedactedLog(model, log), ct); }
-        finally { File.Delete(manifest); File.Delete(environment); }
+        string? environment = null;
+        try { environment = await PrivateFile("", ct); await Compose(manifest, environment, ComposeDefinition.StackName(projectId), args, RedactedLog(model, log), ct); }
+        finally { File.Delete(manifest); if (environment is not null) File.Delete(environment); }
     }
 
     private static Func<string, Task> RedactedLog(JsonObject model, Func<string, Task> log)
@@ -145,10 +155,14 @@ public sealed class ComposeRuntime(ProcessRunner runner, SecretProtector protect
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Compose deployment requires Linux.");
         var directory = Path.Combine(root, "secrets"); Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".compose");
-        await using var stream = new FileStream(path, new FileStreamOptions { Mode = FileMode.CreateNew,
-            Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite });
-        await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(content.AsMemory(), ct);
-        return path;
+        try
+        {
+            await using var stream = new FileStream(path, new FileStreamOptions { Mode = FileMode.CreateNew,
+                Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite });
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(content.AsMemory(), ct);
+            return path;
+        }
+        catch { if (File.Exists(path)) File.Delete(path); throw; }
     }
 }

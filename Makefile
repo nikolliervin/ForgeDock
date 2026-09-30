@@ -1,4 +1,4 @@
-.PHONY: init infra migrate api worker web test build e2e
+.PHONY: init infra migrate api worker web test build e2e compose docker-test
 init:
 	bash scripts/init-local.sh
 infra:
@@ -22,3 +22,9 @@ test:
 
 e2e:
 	bash scripts/with-env.sh npm --prefix web run test:e2e
+
+compose:
+	bash scripts/install-compose.sh
+
+docker-test:
+	FORGEDOCK_DOCKER_TESTS=1 dotnet test tests/ForgeDock.Tests

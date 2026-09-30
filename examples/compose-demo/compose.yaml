@@ -1,6 +1,7 @@
 services:
   web:
     build: ./web
+    secrets: [fixture-secret]
     environment:
       DEMO_LABEL: ${DEMO_LABEL:-Compose demo}
     depends_on:
@@ -23,3 +24,6 @@ services:
       retries: 15
 volumes:
   data:
+secrets:
+  fixture-secret:
+    file: fixture-secret.example

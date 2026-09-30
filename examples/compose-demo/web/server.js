@@ -20,7 +20,7 @@ function redis(command) {
 }
 http.createServer(async (request, response) => {
   try {
-    if (request.url === '/health') { await redis(['PING']); response.end('healthy'); return; }
+    if (request.url === '/health') { if (!fs.existsSync('/run/secrets/fixture-secret')) throw new Error('Repository secret mount is missing'); await redis(['PING']); response.end('healthy'); return; }
     const count = await redis(['INCR', 'requests']);
     const label = String(process.env.DEMO_LABEL || 'Compose demo').replace(/[&<>"']/g, '');
     response.setHeader('Content-Type', 'text/html');

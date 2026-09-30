@@ -63,3 +63,20 @@ test('dashboard remains usable on a narrow viewport', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/dashboard-mobile.png`, fullPage: true });
 });
+
+test('Compose WordPress opens its installer through the public route', async ({ page }) => {
+  const token = process.env.ForgeDock__ApiToken;
+  if (!token) throw new Error('Load the management token with scripts/with-env.sh.');
+  await page.goto('/');
+  await page.getByLabel('Management token').fill(token);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Compose WordPress demo', exact: true }).click();
+  await expect(page.locator('.route small')).toContainText('Running');
+  const url = await page.locator('.route a').getAttribute('href');
+  const app = await page.context().newPage();
+  await app.goto(url!);
+  expect(new URL(app.url()).port).toBe('8088');
+  expect(new URL(app.url()).pathname).toBe('/wp-admin/install.php');
+  await expect(app).toHaveTitle(/WordPress/);
+  await app.close();
+});
