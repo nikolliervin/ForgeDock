@@ -11,4 +11,5 @@ builder.Services.AddDbContext<ForgeDockDbContext>(o => o.UseNpgsql(connection));
 builder.Services.AddSingleton<ProcessRunner>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<MetricsCollector>();
+builder.Services.AddHostedService<NotificationWorker>();
 await builder.Build().RunAsync();

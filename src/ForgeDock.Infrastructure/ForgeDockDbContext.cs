@@ -5,6 +5,8 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<MetricSample> Metrics => Set<MetricSample>();
@@ -17,6 +19,10 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<NotificationSettings>().HasKey(n => n.ProjectId);
+        model.Entity<NotificationSettings>().HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<NotificationDelivery>().HasIndex(n => new { n.DeploymentId, n.Event, n.Channel }).IsUnique();
+        model.Entity<NotificationDelivery>().HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<ProjectWebhook>().HasKey(w => w.ProjectId);
         model.Entity<ProjectWebhook>().HasOne<Project>().WithMany().HasForeignKey(w => w.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<WebhookDelivery>().HasKey(w => new { w.ProjectId, w.DeliveryId });
