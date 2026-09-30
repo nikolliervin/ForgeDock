@@ -16,6 +16,7 @@ if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
 builder.Services.AddSingleton(new SecretProtector(builder.Configuration["ForgeDock:SecretKey"]
     ?? throw new InvalidOperationException("Set ForgeDock__SecretKey with openssl rand -base64 32.")));
 builder.Services.AddDbContext<ForgeDockDbContext>(o => o.UseNpgsql(connection));
+builder.Services.AddSingleton(DomainSettings.From(key => builder.Configuration[key]));
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -39,6 +40,7 @@ app.MapGet("/health/live", () => Results.Ok(new { status = "alive" }));
 app.MapGet("/health/ready", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Database.CanConnectAsync(ct) ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503));
 var api = app.MapGroup("/api").RequireAuthorization();
+api.MapDomainEndpoints();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(

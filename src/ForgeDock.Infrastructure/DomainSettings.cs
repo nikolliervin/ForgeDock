@@ -1,0 +1,38 @@
+using ForgeDock.Application;
+using System.Net;
+using System.Net.Mail;
+using System.Text.Json;
+
+namespace ForgeDock.Infrastructure;
+
+public sealed record DomainSettings(bool Enabled, string Target, string[] Addresses, string Email,
+    string AcmeDirectory = "https://acme-v02.api.letsencrypt.org/directory", string EdgeContainer = "forgedock-edge")
+{
+    public static DomainSettings From(Func<string, string?> get) => new(
+        bool.TryParse(get("ForgeDock:Domains:Enabled"), out var enabled) && enabled,
+        (get("ForgeDock:Domains:Target") ?? "").Trim().TrimEnd('.').ToLowerInvariant(),
+        (get("ForgeDock:Domains:Addresses") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+        (get("ForgeDock:Domains:Email") ?? "").Trim(),
+        get("ForgeDock:Domains:AcmeDirectory") ?? "https://acme-v02.api.letsencrypt.org/directory",
+        get("ForgeDock:Domains:EdgeContainer") ?? "forgedock-edge");
+
+    public string? Validate()
+    {
+        if (!Enabled) return "Custom domains are not enabled on this server.";
+        if (!DomainName.TryNormalize(Target, out var target) || target != Target)
+            return "Set ForgeDock__Domains__Target to the server's public DNS hostname.";
+        if (Addresses.Length == 0 || Addresses.Any(value => !IPAddress.TryParse(value, out _)))
+            return "Set ForgeDock__Domains__Addresses to the server's comma-separated public IP addresses.";
+        if (!MailAddress.TryCreate(Email, out var email) || email.Address != Email)
+            return "Set ForgeDock__Domains__Email to a valid certificate registration email.";
+        if (!Uri.TryCreate(AcmeDirectory, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
+            !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Fragment))
+            return "The ACME directory must be an HTTPS URL.";
+        if (!System.Text.RegularExpressions.Regex.IsMatch(EdgeContainer, @"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"))
+            return "The edge container name is invalid.";
+        return null;
+    }
+
+    public bool IsStaging => AcmeDirectory != "https://acme-v02.api.letsencrypt.org/directory";
+    public static string Quote(string value) => JsonSerializer.Serialize(value);
+}

@@ -5,6 +5,7 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<CustomDomain> CustomDomains => Set<CustomDomain>();
     public DbSet<ProjectOperation> Operations => Set<ProjectOperation>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
@@ -13,6 +14,10 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<CustomDomain>().Property(d => d.State).HasConversion<string>();
+        model.Entity<CustomDomain>().Property(d => d.Hostname).HasMaxLength(253);
+        model.Entity<CustomDomain>().HasIndex(d => d.Hostname).IsUnique();
+        model.Entity<CustomDomain>().HasOne<Project>().WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<ProjectOperation>().Property(o => o.Kind).HasConversion<string>();
         model.Entity<ProjectOperation>().Property(o => o.State).HasConversion<string>();
         model.Entity<ProjectOperation>().HasIndex(o => o.State);
