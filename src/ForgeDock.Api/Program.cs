@@ -66,7 +66,7 @@ api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, S
     db.Projects.Add(project);
     if (request.Database is { } kind)
     {
-        var password = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var password = DatabaseRuntime.NewPassword();
         var service = new DatabaseService { ProjectId = project.Id, Kind = kind, ProtectedPassword = protector.Protect(password) };
         db.DatabaseServices.Add(service);
         db.EnvironmentVariables.Add(new ProjectEnvironment { ProjectId = project.Id, Name = DatabaseRuntime.Variable(kind), ProtectedValue = protector.Protect(DatabaseRuntime.Connection(service, password)) });
@@ -215,10 +215,10 @@ public record OperationRequest(ProjectOperationKind Kind);
 
 public record ProjectRequest(string Name, string RepositoryUrl, string Branch = "main", string Dockerfile = "Dockerfile",
     int ContainerPort = 8080, string HealthPath = "/", DeploymentMode DeploymentMode = DeploymentMode.Dockerfile,
-    string ComposeFile = "docker-compose.yml", string ComposeService = "", string BuildCommand = "", string StartCommand = "", string RootDirectory = ".", DatabaseKind? Database = null)
+    string ComposeFile = "docker-compose.yml", string ComposeService = "", string BuildCommand = "", string StartCommand = "", string RootDirectory = ".", DatabaseKind? Database = null, bool AcceptSqlServerLicense = false)
 {
     public IReadOnlyList<string> Validate() => ProjectConfiguration.Validate(Name ?? "", RepositoryUrl ?? "", Branch ?? "",
-        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "", BuildCommand, StartCommand, RootDirectory).Concat(Database is { } kind && !Enum.IsDefined(kind) ? new[] { "Unsupported database service." } : Array.Empty<string>()).ToArray();
+        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "", BuildCommand, StartCommand, RootDirectory).Concat(Database is { } kind && !Enum.IsDefined(kind) ? new[] { "Unsupported database service." } : Array.Empty<string>()).Concat(Database == DatabaseKind.SqlServer && !AcceptSqlServerLicense ? new[] { "Accept the SQL Server Express license before creating this service." } : Array.Empty<string>()).ToArray();
 }
 public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string Branch, string Dockerfile,
     int ContainerPort, string HealthPath, Guid? ActiveDeploymentId, string HealthStatus,

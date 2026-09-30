@@ -61,6 +61,12 @@ try:
     code, project = call('/projects', {'name': 'Webhook test', 'repositoryUrl': 'https://github.com/example/private.git', 'branch': 'main', 'deploymentMode': 'Auto'})
     assert code == 201
     project_id = project['id']
+    sql_project = {'name': 'SQL template', 'repositoryUrl': 'https://github.com/example/sql', 'database': 'SqlServer'}
+    assert call('/projects', sql_project)[0] == 400
+    code, sql_created = call('/projects', {**sql_project, 'acceptSqlServerLicense': True})
+    assert code == 201
+    assert call(f"/projects/{sql_created['id']}/databases")[1][0]['kind'] == 'SqlServer'
+    assert call(f"/projects/{sql_created['id']}/environment")[1] == ['SQLSERVER_CONNECTION_STRING']
     settings_path = '/projects/' + project_id + '/webhook'
     hook_path = '/webhooks/github/' + project_id
     assert call(settings_path, {'enabled': True}, 'PUT', auth=False)[0] == 401
@@ -165,9 +171,17 @@ try:
     database = call(database_path)[1][0]
     assert 'protectedPassword' not in database
     assert 'DATABASE_URL' in call(f'/projects/{project_id}/environment')[1]
+    # All engines are accepted; SQL Server explicitly requires license acceptance.
+    assert call(database_path, {'kind': 'SqlServer'})[0] == 400
+    for kind, variable in [('MySql', 'MYSQL_URL'), ('SqlServer', 'SQLSERVER_CONNECTION_STRING'), ('MongoDb', 'MONGODB_URL')]:
+        code, result = call(database_path, {'kind': kind, 'acceptSqlServerLicense': kind == 'SqlServer'})
+        assert code == 202 and result['kind'] == kind and result['variable'] == variable
+        assert variable in call(f'/projects/{project_id}/environment')[1]
+        assert call(database_path, {'kind': kind, 'acceptSqlServerLicense': True})[0] == 409
+    assert all('protectedPassword' not in item for item in call(database_path)[1])
     assert call(f"{database_path}/{database['id']}/schedule", {'intervalHours': 24}, 'PUT')[0] == 204
     assert call(f"{database_path}/{database['id']}/schedule", {'intervalHours': 169}, 'PUT')[0] == 400
-    assert call(database_path)[1][0]['nextBackupAt'] is not None
+    assert next(item for item in call(database_path)[1] if item['id'] == database['id'])['nextBackupAt'] is not None
     # Independent preview DB and environment; exact SHA; concurrent receipt dedup; stale close handling.
     assert call(f'/projects/{project_id}/previews', {'enabled': True}, 'PUT')[0] == 204
     pr = {'action': 'opened', 'number': 17, 'repository': {'html_url': 'https://github.com/example/private'},
@@ -181,8 +195,9 @@ try:
     preview = call(f'/projects/{project_id}/previews')[1]['previews'][0]
     assert preview['branch'] == 'feature/test'
     variables = call(f"/projects/{preview['id']}/environment")[1]
-    assert variables == ['DATABASE_URL'], variables
-    assert call(f"/projects/{preview['id']}/databases")[1][0]['id'] != database['id']
+    assert set(variables) == {'DATABASE_URL', 'MYSQL_URL', 'SQLSERVER_CONNECTION_STRING', 'MONGODB_URL'}, variables
+    assert len(call(f"/projects/{preview['id']}/databases")[1]) == 4
+    assert all(item['id'] not in {parent['id'] for parent in call(database_path)[1]} for item in call(f"/projects/{preview['id']}/databases")[1])
     preview_deployments = call(f"/projects/{preview['id']}/deployments")[1]
     assert len(preview_deployments) == 1 and preview_deployments[0]['trigger'] == 'GitHubPullRequest'
     fork = json.loads(json.dumps(pr)); fork['pull_request']['head']['repo']['html_url'] = 'https://github.com/fork/private'

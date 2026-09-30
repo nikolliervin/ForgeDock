@@ -24,8 +24,7 @@ public sealed partial class Worker
         try
         {
             if (database is null || database.State != "Running") throw new InvalidOperationException();
-            if (job.Kind == "Backup") job.SizeBytes = await Backups.Create(database, job.Id, ct);
-            else
+            if (job.Kind != "Backup" || database.Kind == DatabaseKind.MongoDb)
             {
                 if (active?.ContainerId is { } container && active.State == DeploymentState.Running)
                 {
@@ -37,8 +36,9 @@ public sealed partial class Worker
                         project!.HealthStatus = "Restoring"; await db.SaveChangesAsync(ct);
                     }
                 }
-                await Backups.Restore(database, job.SourceBackupId!.Value, ct);
             }
+            if (job.Kind == "Backup") job.SizeBytes = await Backups.Create(database, job.Id, ct);
+            else await Backups.Restore(database, job.SourceBackupId!.Value, ct);
             job.State = "Completed";
         }
         catch (Exception error) when (!ct.IsCancellationRequested)

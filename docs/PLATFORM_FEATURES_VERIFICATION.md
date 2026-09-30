@@ -7,7 +7,7 @@ Verified on the local Linux/Docker development host on 2026-10-01.
 | Feature | Dashboard location | Setup and operating guide |
 | --- | --- | --- |
 | Deployment notifications | Settings → Deployment notifications | [NOTIFICATIONS.md](NOTIFICATIONS.md), `/docs/notifications` |
-| Managed PostgreSQL / Redis | Databases | [DATABASE_SERVICES.md](DATABASE_SERVICES.md), `/docs/database-services` |
+| Managed PostgreSQL / Redis / MySQL / SQL Server Express / MongoDB | Databases | [DATABASE_SERVICES.md](DATABASE_SERVICES.md), `/docs/database-services` |
 | Backups and restore | Backups | [BACKUPS.md](BACKUPS.md), `/docs/backups` |
 | Pull request previews | Previews | [PREVIEW_ENVIRONMENTS.md](PREVIEW_ENVIRONMENTS.md), `/docs/preview-environments` |
 | Resource limits and alerts | Settings → Resource controls | [RESOURCE_CONTROLS.md](RESOURCE_CONTROLS.md), `/docs/resource-controls` |
@@ -45,3 +45,13 @@ Docker checks require local infrastructure and use their own temporary resources
 ## Practical limits
 
 Slack/Discord live delivery and public wildcard-preview certificate issuance require the operator's own channel/domain setup and were not tested against external accounts. SMTP requires an existing mail service; no paid provider is mandatory. Backup storage is local and requires an off-host copy for host-loss protection. Restores interrupt apps, and interrupted restores require operator inspection. Previews deploy same-repository non-draft PRs only, do not inherit production secrets, and retain deleted-preview volumes/artifacts for separate cleanup. Resource monitoring samples every 30 seconds; runtime limits do not constrain builds. The single trusted operator and host-isolation limitations still apply.
+
+## Additional database engines
+
+MySQL 8.4, SQL Server 2022 Express, and MongoDB 8.0 use the same managed service, encrypted backup, schedule, retention, and dashboard restore flows. SQL Server license acceptance is required at creation. SQL Server receives a 2 GiB memory limit; other managed services receive 512 MiB.
+
+Real Docker tests create data, back it up, modify data and add a table/collection, restore, verify that later objects are removed, and recreate the database container to confirm restored data persists. MongoDB indexes are checked, and app-scoped credentials are used for data queries. Invalid encrypted files and encrypted invalid native archives must fail without changing data. PostgreSQL and Redis persistence/restore regression tests remain enabled.
+
+API integration checks cover all five types, distinct encrypted connection variables, SQL Server license validation at project and service creation, duplicate service rejection, schedules, project-scoped restore, and fresh preview databases for the new types. Browser checks cover all five database buttons and backup schedules, SQL Server acceptance, the new-project picker, and existing documentation navigation.
+
+Run `FORGEDOCK_DOCKER_TESTS=1 dotnet test tests/ForgeDock.Tests --filter FullyQualifiedName~DatabaseRuntimeTests` for database integration coverage. See DATABASE_SERVICES.md and BACKUPS.md for engine-specific behavior and restore limits. Compose-defined databases are outside this managed-service backup flow.

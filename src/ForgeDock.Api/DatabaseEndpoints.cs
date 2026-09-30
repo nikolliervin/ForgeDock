@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using ForgeDock.Domain;
 using ForgeDock.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -13,13 +12,14 @@ public static class DatabaseEndpoints
         api.MapPost("/projects/{id:guid}/databases", async (Guid id, DatabaseRequest request, ForgeDockDbContext db, SecretProtector protector, CancellationToken ct) =>
         {
             if (!Enum.IsDefined(request.Kind)) return Results.BadRequest();
+            if (request.Kind == DatabaseKind.SqlServer && !request.AcceptSqlServerLicense) return Results.Problem("Accept the SQL Server Express license before creating this service.", statusCode: 400);
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             if (await db.Projects.FromSqlInterpolated($"SELECT * FROM \"Projects\" WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct) is null) return Results.NotFound();
             if (await db.DatabaseServices.AnyAsync(s => s.ProjectId == id && s.Kind == request.Kind, ct)) return Results.Conflict(new { error = "This database service already exists." });
             if (await db.Operations.AnyAsync(o => o.ProjectId == id && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct)) return Results.Conflict(new { error = "Wait for the project operation." });
             var variable = DatabaseRuntime.Variable(request.Kind);
             if (await db.EnvironmentVariables.AnyAsync(e => e.ProjectId == id && e.Name == variable, ct)) return Results.Conflict(new { error = $"Remove the existing {variable} variable before creating a managed database." });
-            var password = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+            var password = DatabaseRuntime.NewPassword();
             var service = new DatabaseService { ProjectId = id, Kind = request.Kind, ProtectedPassword = protector.Protect(password) };
             db.DatabaseServices.Add(service);
             db.EnvironmentVariables.Add(new ProjectEnvironment { ProjectId = id, Name = variable, ProtectedValue = protector.Protect(DatabaseRuntime.Connection(service, password)) });
@@ -35,4 +35,4 @@ public static class DatabaseEndpoints
         });
     }
 }
-public sealed record DatabaseRequest(DatabaseKind Kind);
+public sealed record DatabaseRequest(DatabaseKind Kind, bool AcceptSqlServerLicense = false);

@@ -43,3 +43,31 @@ test('database backups previews resource settings and notifications are availabl
   await page.getByRole('button', { name: 'Save notifications', exact: true }).click();
   expect(writes.find(write => write.path.endsWith('/notifications'))?.body.slackUrl).toContain('/T/B/secret');
 });
+
+test('all managed database engines have backup controls and SQL Server requests license acceptance', async ({ page }) => {
+  const id = '00000000-0000-0000-0000-000000000040';
+  const project = { id, name: 'Database app', repositoryUrl: 'https://github.com/example/app', branch: 'main', deploymentMode: 'Auto', containerPort: 8080, healthPath: '/', healthStatus: 'NotDeployed', activeDeploymentId: null, rootDirectory: '.', buildCommand: '', startCommand: '' };
+  const databases: any[] = [], writes: any[] = [];
+  await page.route('**/api/**', route => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === 'POST' && path.endsWith('/databases')) {
+      const body = request.postDataJSON(); writes.push(body);
+      databases.push({ id: `db-${body.kind}`, kind: body.kind, state: 'Running', backupIntervalHours: 0 });
+      return route.fulfill({ json: {} });
+    }
+    return route.fulfill({ json: path.endsWith('/session') ? { name: 'operator' } : path === '/api/projects' ? [project] : path.endsWith('/databases') ? databases : [] });
+  });
+  await page.goto(`/projects/${id}/databases`);
+  await page.getByLabel('Management token').fill('database-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  for (const name of ['PostgreSQL', 'Redis', 'MySQL', 'MongoDB']) await page.getByRole('button', { name: `Add ${name}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Add SQL Server Express', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('license terms');
+  expect(writes).toHaveLength(4);
+  await page.getByRole('button', { name: 'Accept and create', exact: true }).click();
+  await expect.poll(() => writes.length).toBe(5);
+  expect(writes[4]).toEqual({ kind: 'SqlServer', acceptSqlServerLicense: true });
+  for (const variable of ['DATABASE_URL', 'REDIS_URL', 'MYSQL_URL', 'SQLSERVER_CONNECTION_STRING', 'MONGODB_URL']) await expect(page.getByText(variable, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Backups', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Back up now', exact: true })).toHaveCount(5);
+  for (const kind of ['PostgreSql', 'Redis', 'MySql', 'SqlServer', 'MongoDb']) await expect(page.getByLabel(`${kind} backup schedule`)).toBeVisible();
+});

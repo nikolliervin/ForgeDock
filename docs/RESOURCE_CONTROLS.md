@@ -2,7 +2,7 @@
 
 Open **Project → Settings → Resource controls**. Set CPU cores (0.1–32), memory (64–65536 MiB), and whether to monitor resource incidents. Defaults are one CPU and 512 MiB. Deploy again to apply changes. Every deployment stores its limits, so rolling back also restores the old limits.
 
-Docker enforces the CPU quota by throttling and the memory ceiling with a hard limit; swap is capped at the same amount, preventing additional swap allowance. Apps use `on-failure:5` to restart after crashes, with a maximum of five retries. For Compose, platform settings override the routed app's service and deploy resource limits; other services keep their repository configuration and existing ForgeDock defaults. Managed PostgreSQL/Redis defaults remain separate.
+Docker enforces the CPU quota by throttling and the memory ceiling with a hard limit; swap is capped at the same amount, preventing additional swap allowance. Apps use `on-failure:5` to restart after crashes, with a maximum of five retries. For Compose, platform settings override the routed app's service and deploy resource limits; other services keep their repository configuration and existing ForgeDock defaults. Managed database defaults remain separate.
 
 The monitor runs every 30 seconds and records dashboard alerts for:
 

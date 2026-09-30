@@ -44,6 +44,6 @@ The Metrics tab shows CPU, memory, received/sent traffic rates, and 24-hour usag
 
 ## Project services and automation
 
-Deployment notifications, managed PostgreSQL/Redis, scheduled encrypted backups and dashboard restoration, GitHub pull-request previews, CPU/memory quotas with crash/resource alerts, and project templates with downloadable starters are implemented. Settings use independent desktop columns and stack on mobile. Each feature has a repository guide and a public built-in documentation article, including disabled-preview setup instructions.
+Deployment notifications, managed PostgreSQL/Redis/MySQL/SQL Server Express/MongoDB, scheduled encrypted backups and dashboard restoration, GitHub pull-request previews, CPU/memory quotas with crash/resource alerts, and project templates with downloadable starters are implemented. Settings use independent desktop columns and stack on mobile. Each feature has a repository guide and a public built-in documentation article, including disabled-preview setup instructions.
 
 See [project services verification](PLATFORM_FEATURES_VERIFICATION.md) for current checks, real GitHub/Docker results, reproduction commands, and practical limits. Preview URLs are local by default; public URLs require wildcard DNS and configured HTTPS hosting. Notifications require project channels and, for email, server SMTP settings. Backups remain local unless operators copy them off-host. Resource monitoring and notification delivery run independently of the serial deployment worker.

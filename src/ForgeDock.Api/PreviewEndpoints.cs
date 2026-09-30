@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using ForgeDock.Application;
 using ForgeDock.Domain;
 using ForgeDock.Infrastructure;
@@ -50,7 +49,7 @@ public static class PreviewEndpoints
             db.Projects.Add(project); registration.ProjectId = project.Id;
             foreach (var kind in await db.DatabaseServices.Where(s => s.ProjectId == parent.Id).Select(s => s.Kind).ToListAsync(ct))
             {
-                var password = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+                var password = DatabaseRuntime.NewPassword();
                 var service = new DatabaseService { ProjectId = project.Id, Kind = kind, ProtectedPassword = protector.Protect(password) };
                 db.DatabaseServices.Add(service); db.EnvironmentVariables.Add(new ProjectEnvironment { ProjectId = project.Id, Name = DatabaseRuntime.Variable(kind), ProtectedValue = protector.Protect(DatabaseRuntime.Connection(service, password)) });
             }

@@ -1,6 +1,6 @@
 using ForgeDock.Domain;
 namespace ForgeDock.Infrastructure;
-public sealed class BackupRuntime(DatabaseRuntime databases, string runtimePath, string secretKey)
+public sealed partial class BackupRuntime(DatabaseRuntime databases, string runtimePath, string secretKey)
 {
     private string Root => Path.Combine(Path.GetFullPath(runtimePath), "backups");
     public string FilePath(Guid id) => Path.Combine(Root, id.ToString("N") + ".fgbackup");
@@ -12,9 +12,7 @@ public sealed class BackupRuntime(DatabaseRuntime databases, string runtimePath,
         await databases.AssertOwned(service, ct);
         try
         {
-            if (service.Kind == DatabaseKind.PostgreSql)
-                await databases.Docker(["exec", DatabaseRuntime.Container(service), "pg_dump", "-U", "app", "-d", "app", "-Fc", "--no-owner", "--no-privileges", "-f", remote], ct);
-            else await databases.Docker(["exec", DatabaseRuntime.Container(service), "sh", "-c", $"REDISCLI_AUTH=\"$REDIS_PASSWORD\" redis-cli --rdb {remote}"], ct);
+            await Dump(service, remote, ct);
             await databases.Docker(["cp", DatabaseRuntime.Container(service) + ":" + remote, plain], ct);
             if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(plain, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             await BackupEncryption.Encrypt(plain, FilePath(id), secretKey, ct); return new FileInfo(FilePath(id)).Length;
@@ -52,7 +50,7 @@ public sealed class BackupRuntime(DatabaseRuntime databases, string runtimePath,
                 }
                 finally { await databases.Docker(["exec", container, "dropdb", "-U", "app", "--if-exists", staging], CancellationToken.None); }
             }
-            else
+            else if (service.Kind == DatabaseKind.Redis)
             {
                 await databases.Docker(["exec", container, "redis-check-rdb", remote], ct);
                 await databases.Stop(service, false, ct);
@@ -65,6 +63,7 @@ public sealed class BackupRuntime(DatabaseRuntime databases, string runtimePath,
                 finally { await databases.Docker(["start", container], CancellationToken.None); }
                 await databases.Provision(service, ct);
             }
+            else await RestoreAdditional(service, remote, ct);
         }
         finally
         {

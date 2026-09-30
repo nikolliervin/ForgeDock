@@ -15,7 +15,7 @@ git push -u origin main
 
 For Node, Next.js, and React/Vite, run `npm install` and commit the generated `package-lock.json` before deployment. Vite's provided Dockerfile uses `npm ci` and serves the built assets with nginx on port 8080. Next.js uses `npm run build`, then starts on `0.0.0.0:$PORT`. FastAPI expects `main:app`. Go and ASP.NET Core use automatic runtime detection. The starter health path is `/health`.
 
-The optional **Managed database** selection creates PostgreSQL or Redis atomically with the project and saves its encrypted connection variable. Wait for the database to show Running, then deploy. Starter apps do not perform application database migrations or database health checks; add the client, schema, and migrations your app needs. The Compose starter already includes private Redis with a persistent named volume, so an additional managed Redis is usually unnecessary.
+The optional **Managed database** selection creates PostgreSQL, Redis, MySQL, SQL Server Express, or MongoDB atomically with the project and saves its encrypted connection variable. Wait for the database to show Running, then deploy. Starter apps do not perform application database migrations or database health checks; add the client, schema, and migrations your app needs. The Compose starter already includes private Redis with a persistent named volume, so an additional managed Redis is usually unnecessary.
 
 Template source is maintained in `examples/templates/` and embedded into the backend for authenticated ZIP downloads. Archives contain no credentials. Dependency ranges are starting defaults; install and commit lockfiles, and keep dependencies updated. Creating a project does not create a GitHub repository, push code, or deploy automatically.
 

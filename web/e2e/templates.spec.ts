@@ -25,6 +25,8 @@ test('templates fill editable defaults preserve repository details and download 
   await expect(page.getByLabel('Branch', { exact: true })).toHaveValue('master');
   await expect(page.getByLabel('Public service', { exact: true })).toHaveValue('web');
   await page.getByLabel('Container port', { exact: true }).fill('9000');
+  await page.getByLabel('Managed database', { exact: true }).selectOption('SqlServer');
+  await expect(page.getByRole('checkbox', { name: /I accept/ })).toHaveAttribute('required', '');
   await page.getByLabel('Managed database', { exact: true }).selectOption('Redis');
   await page.locator('main').getByRole('button', { name: 'Create project', exact: true }).click();
   await expect.poll(() => created?.containerPort).toBe(9000);
