@@ -13,6 +13,7 @@ public sealed class Deployment
     public DeploymentState LastStage { get; private set; } = DeploymentState.Queued;
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? FinishedAt { get; private set; }
+    public string Trigger { get; set; } = "Manual";
     public string? RequestedCommit { get; set; }
     public string? CommitMessage { get; set; }
     public string? CommitAuthor { get; set; }

@@ -45,6 +45,7 @@ api.MapDomainEndpoints();
 api.MapMetricsEndpoints();
 api.MapEnvironmentEndpoints();
 api.MapConsoleEndpoints();
+api.MapWebhookEndpoints();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(
@@ -215,10 +216,10 @@ public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string
 }
 public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services,
-    string? CommitMessage, string? CommitAuthor, DeploymentState LastStage, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt)
+    string? CommitMessage, string? CommitAuthor, DeploymentState LastStage, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, string Trigger = "Manual")
 {
     public static DeploymentResponse From(Deployment d) => new(d.Id, d.ProjectId, d.State, d.CreatedAt,
         d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId,
         string.IsNullOrWhiteSpace(d.ServiceStatusJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? [],
-        d.CommitMessage, d.CommitAuthor, d.LastStage, d.StartedAt, d.FinishedAt);
+        d.CommitMessage, d.CommitAuthor, d.LastStage, d.StartedAt, d.FinishedAt, d.Trigger);
 }

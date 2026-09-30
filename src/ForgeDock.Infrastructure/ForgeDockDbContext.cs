@@ -5,6 +5,8 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<MetricSample> Metrics => Set<MetricSample>();
     public DbSet<CustomDomain> CustomDomains => Set<CustomDomain>();
     public DbSet<ProjectOperation> Operations => Set<ProjectOperation>();
@@ -15,6 +17,13 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<ProjectWebhook>().HasKey(w => w.ProjectId);
+        model.Entity<ProjectWebhook>().HasOne<Project>().WithMany().HasForeignKey(w => w.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<WebhookDelivery>().HasKey(w => new { w.ProjectId, w.DeliveryId });
+        model.Entity<WebhookDelivery>().HasIndex(w => new { w.ProjectId, w.ReceivedAt });
+        model.Entity<WebhookDelivery>().Property(w => w.Event).HasMaxLength(100);
+        model.Entity<WebhookDelivery>().Property(w => w.Status).HasMaxLength(100);
+        model.Entity<WebhookDelivery>().HasOne<Project>().WithMany().HasForeignKey(w => w.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<MetricSample>().HasIndex(m => new { m.ProjectId, m.Timestamp });
         model.Entity<MetricSample>().HasIndex(m => m.Timestamp);
         model.Entity<MetricSample>().Property(m => m.ContainerId).HasMaxLength(64);
@@ -32,6 +41,7 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
         model.Entity<Project>().Property(p => p.DeploymentMode).HasConversion<string>();
         model.Entity<Project>().Property(p => p.RootDirectory).HasDefaultValue(".");
         model.Entity<Project>().Property(p => p.Name).HasMaxLength(100);
+        model.Entity<Deployment>().Property(d => d.Trigger).HasDefaultValue("Manual");
         model.Entity<Deployment>().Property(d => d.ServiceStatusJson).HasDefaultValue("[]");
         model.Entity<Deployment>().Property(d => d.State).HasConversion<string>().IsConcurrencyToken();
         model.Entity<Deployment>().Property(d => d.LastStage).HasConversion<string>().HasDefaultValue(DeploymentState.Queued);
