@@ -31,6 +31,7 @@ if (!string.IsNullOrWhiteSpace(webRoot) && Directory.Exists(webRoot))
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
     app.MapGet("/docs/{**path}", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
+    app.MapGet("/projects/{**path}", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
 }
 app.UseStatusCodePages();
 app.UseAuthentication();
@@ -74,14 +75,16 @@ api.MapPut("/projects/{id:guid}", async (Guid id, ProjectRequest request, ForgeD
     await db.SaveChangesAsync(ct);
     return Results.Ok(ProjectResponse.From(project));
 });
-api.MapPost("/projects/{id:guid}/deployments", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
+api.MapPost("/projects/{id:guid}/deployments", async (Guid id, DeploymentRequest request, ForgeDockDbContext db, CancellationToken ct) =>
 {
+    if (request.CommitSha is not null && !ProjectConfiguration.IsCommitSha(request.CommitSha))
+        return Results.Problem("Commit SHA must contain exactly 40 hexadecimal characters.", statusCode: 400);
     var project = await db.Projects.FindAsync([id], ct);
     if (project is null) return Results.NotFound();
     if (await db.Operations.AnyAsync(o => o.ProjectId == id && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
         return Results.Conflict(new { error = "Wait for the pending project operation." });
     var environment = await db.EnvironmentVariables.Where(e => e.ProjectId == id).ToListAsync(ct);
-    var deployment = new Deployment { ProjectId = id, ConfigurationJson = DeploymentSnapshot.Create(project, environment).Serialize() };
+    var deployment = new Deployment { ProjectId = id, RequestedCommit = request.CommitSha?.ToLowerInvariant(), ConfigurationJson = DeploymentSnapshot.Create(project, environment).Serialize() };
     db.Deployments.Add(deployment);
     await db.SaveChangesAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
@@ -94,7 +97,40 @@ api.MapGet("/deployments/{id:guid}", async (Guid id, ForgeDockDbContext db, Canc
         ? Results.Ok(DeploymentResponse.From(deployment)) : Results.NotFound());
 api.MapGet("/deployments/{id:guid}/logs", async (Guid id, long? after, ForgeDockDbContext db, CancellationToken ct) =>
     await db.Logs.AsNoTracking().Where(l => l.DeploymentId == id && l.Id > (after ?? 0)).OrderBy(l => l.Id)
-        .Take(500).Select(l => new { l.Id, l.Timestamp, l.Message }).ToListAsync(ct));
+        .Take(500).Select(l => new { l.Id, l.Timestamp, l.Message, l.Phase }).ToListAsync(ct));
+api.MapPost("/deployments/{id:guid}/redeploy", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
+{
+    var source = await db.Deployments.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id, ct);
+    if (source is null) return Results.NotFound();
+    if (await db.Operations.AnyAsync(o => o.ProjectId == source.ProjectId && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
+        return Results.Conflict(new { error = "Wait for the pending project operation." });
+    var deployment = new Deployment { ProjectId = source.ProjectId, RequestedCommit = source.CommitSha ?? source.RequestedCommit,
+        ConfigurationJson = source.ConfigurationJson };
+    db.Deployments.Add(deployment); await db.SaveChangesAsync(ct);
+    return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
+});
+api.MapPost("/deployments/{id:guid}/cancel", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
+{
+    // Atomic update races safely with the worker's state concurrency token.
+    var now = DateTimeOffset.UtcNow;
+    var changed = await db.Deployments.Where(d => d.Id == id && d.State == DeploymentState.Queued)
+        .ExecuteUpdateAsync(update => update.SetProperty(d => d.State, DeploymentState.Cancelled)
+            .SetProperty(d => d.LastStage, DeploymentState.Queued).SetProperty(d => d.UpdatedAt, now)
+            .SetProperty(d => d.FinishedAt, now), ct);
+    if (changed == 0) return await db.Deployments.AnyAsync(d => d.Id == id, ct)
+        ? Results.Conflict(new { error = "Only queued deployments can be cancelled. This deployment has already started or ended." }) : Results.NotFound();
+    return Results.Ok(new { state = DeploymentState.Cancelled });
+});
+api.MapDelete("/deployments/{id:guid}", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
+{
+    var deployment = await db.Deployments.FindAsync([id], ct);
+    if (deployment is null) return Results.NotFound();
+    if (deployment.State is not (DeploymentState.Failed or DeploymentState.Cancelled) ||
+        await db.Projects.AnyAsync(p => p.ActiveDeploymentId == id, ct))
+        return Results.Conflict(new { error = "Only failed or cancelled deployment history can be deleted." });
+    db.Deployments.Remove(deployment); await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+});
 api.MapPost("/deployments/{id:guid}/rollback", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
 {
     var source = await db.Deployments.FindAsync([id], ct);
@@ -104,7 +140,7 @@ api.MapPost("/deployments/{id:guid}/rollback", async (Guid id, ForgeDockDbContex
     if (await db.Operations.AnyAsync(o => o.ProjectId == source.ProjectId && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
         return Results.Conflict(new { error = "Wait for the pending project operation." });
     var deployment = new Deployment { ProjectId = source.ProjectId, RollbackSourceId = source.Id,
-        ImageTag = source.ImageTag, CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
+        ImageTag = source.ImageTag, CommitSha = source.CommitSha, CommitMessage = source.CommitMessage, CommitAuthor = source.CommitAuthor, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
     db.Deployments.Add(deployment);
     await db.SaveChangesAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
@@ -118,7 +154,7 @@ api.MapPost("/projects/{id:guid}/restart", async (Guid id, ForgeDockDbContext db
     var source = await db.Deployments.FindAsync([active], ct);
     if (source?.ImageTag is null) return Results.Conflict(new { error = "Active image is unavailable." });
     var deployment = new Deployment { ProjectId = id, RollbackSourceId = source.Id, ImageTag = source.ImageTag,
-        CommitSha = source.CommitSha, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
+        CommitSha = source.CommitSha, CommitMessage = source.CommitMessage, CommitAuthor = source.CommitAuthor, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
     db.Deployments.Add(deployment); await db.SaveChangesAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
@@ -127,7 +163,7 @@ api.MapPost("/projects/{id:guid}/operations", async (Guid id, OperationRequest r
     if (!Enum.IsDefined(request.Kind)) return Results.Problem("Unsupported project operation.", statusCode: 400);
     if (!await db.Projects.AnyAsync(p => p.Id == id, ct)) return Results.NotFound();
     if (await db.Deployments.AnyAsync(d => d.ProjectId == id && d.State != DeploymentState.Running &&
-        d.State != DeploymentState.Failed && d.State != DeploymentState.Stopped, ct))
+        d.State != DeploymentState.Failed && d.State != DeploymentState.Stopped && d.State != DeploymentState.Cancelled, ct))
         return Results.Conflict(new { error = "Wait for queued or active deployments before stopping or deleting the project." });
     var operation = new ProjectOperation { ProjectId = id, Kind = request.Kind };
     db.Operations.Add(operation); await db.SaveChangesAsync(ct);
@@ -158,6 +194,7 @@ api.MapDelete("/projects/{id:guid}/environment/{name}", async (Guid id, string n
     db.EnvironmentVariables.Remove(variable); await db.SaveChangesAsync(ct); return Results.NoContent();
 });
 app.Run();
+public record DeploymentRequest(string? CommitSha = null);
 public record EnvironmentRequest(string Value);
 public record OperationRequest(ProjectOperationKind Kind);
 
@@ -176,9 +213,11 @@ public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string
         p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService, p.BuildCommand, p.StartCommand, p.RootDirectory);
 }
 public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State, DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services)
+    DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services,
+    string? CommitMessage, string? CommitAuthor, DeploymentState LastStage, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt)
 {
     public static DeploymentResponse From(Deployment d) => new(d.Id, d.ProjectId, d.State, d.CreatedAt,
         d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId,
-        string.IsNullOrWhiteSpace(d.ServiceStatusJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? []);
+        string.IsNullOrWhiteSpace(d.ServiceStatusJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? [],
+        d.CommitMessage, d.CommitAuthor, d.LastStage, d.StartedAt, d.FinishedAt);
 }

@@ -7,3 +7,9 @@ export function navigate(event: MouseEvent<HTMLAnchorElement>, path: string) {
   window.dispatchEvent(new PopStateEvent('popstate'));
   window.scrollTo(0, 0);
 }
+
+export function goTo(path: string) {
+  if (window.location.pathname === path) return;
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}

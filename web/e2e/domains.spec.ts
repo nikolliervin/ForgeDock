@@ -49,9 +49,9 @@ test('domain creation, DNS records, clipboard, verification, and removal work', 
   await page.getByRole('button', { name: 'Verify DNS', exact: true }).click();
   await expect(page.getByText('HTTPS active', { exact: true })).toBeVisible();
   await expect(page.getByText(/Certificate expires/)).toBeVisible();
-  page.once('dialog', dialog => void dialog.accept());
-  await page.getByRole('button', { name: 'Remove domain' }).click();
-  await expect(page.getByText("Your application's next address")).toBeVisible();
+  await page.getByRole('button', { name: 'Remove domain', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove domain', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No custom domains yet' })).toBeVisible();
 });
 
 test('duplicate errors preserve the existing domain and mobile layout fits', async ({ page }) => {

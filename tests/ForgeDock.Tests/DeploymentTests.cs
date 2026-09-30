@@ -38,6 +38,54 @@ public class DeploymentTests
         deployment.TransitionTo(DeploymentState.Starting);
     }
 
+    [Fact]
+    public void QueuedCancellationIsTerminalAndDoesNotPretendWorkStarted()
+    {
+        var deployment = new Deployment();
+        deployment.TransitionTo(DeploymentState.Cancelled);
+        Assert.Equal(DeploymentState.Queued, deployment.LastStage);
+        Assert.Null(deployment.StartedAt);
+        Assert.NotNull(deployment.FinishedAt);
+        Assert.Throws<InvalidOperationException>(() => deployment.TransitionTo(DeploymentState.Preparing));
+        Assert.Throws<InvalidOperationException>(() => deployment.TransitionTo(DeploymentState.Failed, "Invalid cancellation"));
+    }
+
+    [Fact]
+    public void FailurePreservesItsActualStageAndDuration()
+    {
+        var deployment = new Deployment();
+        deployment.TransitionTo(DeploymentState.Preparing);
+        deployment.TransitionTo(DeploymentState.Cloning);
+        deployment.TransitionTo(DeploymentState.Building);
+        Assert.Throws<InvalidOperationException>(() => deployment.TransitionTo(DeploymentState.Cancelled));
+        deployment.TransitionTo(DeploymentState.Failed, "Build failed.");
+        Assert.Equal(DeploymentState.Building, deployment.LastStage);
+        Assert.NotNull(deployment.StartedAt);
+        Assert.True(deployment.FinishedAt >= deployment.StartedAt);
+    }
+
+    [Fact]
+    public void StoppingADeploymentDoesNotExtendItsBuildDuration()
+    {
+        var deployment = new Deployment();
+        foreach (var state in new[] { DeploymentState.Preparing, DeploymentState.Cloning, DeploymentState.Building,
+            DeploymentState.Starting, DeploymentState.HealthChecking, DeploymentState.Routing, DeploymentState.Running })
+            deployment.TransitionTo(state);
+        var finished = deployment.FinishedAt;
+        deployment.TransitionTo(DeploymentState.Stopped);
+        Assert.Equal(finished, deployment.FinishedAt);
+    }
+
+    [Theory]
+    [InlineData("--upload-pack=evil")]
+    [InlineData("main")]
+    [InlineData("abc123")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag")]
+    public void SpecificCommitsRequireFullHexadecimalShas(string value) => Assert.False(ProjectConfiguration.IsCommitSha(value));
+
+    [Fact]
+    public void FullGitCommitShaIsAccepted() => Assert.True(ProjectConfiguration.IsCommitSha(new string('a', 40)));
+
     [Theory]
     [InlineData("../Dockerfile", "main", "https://github.com/example/app")]
     [InlineData("Dockerfile", "--upload-pack=evil", "https://github.com/example/app")]

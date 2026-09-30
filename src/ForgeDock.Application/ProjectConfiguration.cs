@@ -42,6 +42,8 @@ public static partial class ProjectConfiguration
         return errors;
     }
 
+    public static bool IsCommitSha(string? value) => value is not null && value.Length == 40 && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
+
     public static bool IsRepositoryPath(string value) => !string.IsNullOrWhiteSpace(value) &&
         !Path.IsPathRooted(value) && !value.Contains('\\') &&
         !value.Split('/').Any(p => p is ".." or "." or "") && !value.Any(char.IsControl);

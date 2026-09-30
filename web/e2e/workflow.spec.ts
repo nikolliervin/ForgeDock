@@ -30,8 +30,8 @@ test('operator creates, configures, deploys and inspects a real service', async 
   expect(deployed.status()).toBe(200);
   expect(await deployed.text()).toContain('<html');
   await page.screenshot({ path: `${process.env.ForgeDock__RuntimePath}/dashboard.png`, fullPage: true });
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Stop application', exact: true }).click();
   await expect(page.locator('.route small')).toContainText('Stopped', { timeout: 15000 });
   const [restartResponse] = await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/restart') && response.request().method() === 'POST'),
@@ -41,8 +41,8 @@ test('operator creates, configures, deploys and inspects a real service', async 
   const restart = await restartResponse.json();
   await expect(page.locator(`[data-deployment-id="${restart.id}"] .status`)).toHaveText('Running', { timeout: 30000 });
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Delete project', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete project', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();

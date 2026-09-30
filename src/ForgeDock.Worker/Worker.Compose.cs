@@ -26,7 +26,7 @@ public sealed partial class Worker
         {
             foreach (var value in snapshot.ProtectedEnvironment.Values.Select(protector.Unprotect).Where(v => v.Length > 0))
                 line = line.Replace(value, "[REDACTED]", StringComparison.Ordinal);
-            db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line }); await db.SaveChangesAsync(ct);
+            db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = deployment.State is DeploymentState.Queued or DeploymentState.Preparing or DeploymentState.Cloning or DeploymentState.Building ? "Build" : "Runtime" }); await db.SaveChangesAsync(ct);
         }
         async Task Stage(DeploymentState state) { deployment.TransitionTo(state); await Log($"Stage: {state}"); }
         Task<string> Run(string tool, params string[] args) => runner.RunAsync(tool, args, null, Log, ct);
@@ -38,7 +38,7 @@ public sealed partial class Worker
                 await Stage(DeploymentState.Cloning); Directory.CreateDirectory(Path.GetDirectoryName(source)!);
                 await Run("git", "-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
                     "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source);
-                deployment.CommitSha = await Run("git", "-C", source, "rev-parse", "HEAD");
+                await ReadRevision(deployment, source, ct);
                 await Stage(DeploymentState.Building);
                 model = await ComposeEngine.PrepareAsync(source, project.Id, deployment.Id, snapshot, Log, ct);
                 deployment.ProtectedComposeManifest = protector.Protect(model.ToJsonString());
@@ -160,7 +160,7 @@ public sealed partial class Worker
             else { await WaitForComposeHttp(project.Id, snapshot, ct); project.HealthStatus = "Running"; }
             await ComposeEngine.LogsAsync(model, project.Id, async line =>
             {
-                db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line }); await db.SaveChangesAsync(ct);
+                db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = "Runtime" }); await db.SaveChangesAsync(ct);
             }, ct);
         }
         catch (Exception error) when (error is not OperationCanceledException)

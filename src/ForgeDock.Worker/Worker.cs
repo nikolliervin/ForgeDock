@@ -20,7 +20,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         {
             var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
             var interrupted = await db.Deployments.Where(d => d.State != DeploymentState.Queued &&
-                d.State != DeploymentState.Running && d.State != DeploymentState.Stopped && d.State != DeploymentState.Failed).ToListAsync(stoppingToken);
+                d.State != DeploymentState.Running && d.State != DeploymentState.Stopped && d.State != DeploymentState.Failed && d.State != DeploymentState.Cancelled).ToListAsync(stoppingToken);
             foreach (var deployment in interrupted)
                 deployment.TransitionTo(DeploymentState.Failed, "Worker interrupted during deployment. Inspect managed resources and redeploy.");
             foreach (var operation in await db.Operations.Where(o => o.State == ProjectOperationState.Running).ToListAsync(stoppingToken))
@@ -65,6 +65,13 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             if (deployment is null) { await Task.Delay(1000, stoppingToken); continue; }
             try { await ExecuteDeployment(db, deployment, stoppingToken); }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            catch (DbUpdateConcurrencyException)
+            {
+                // A queued cancellation may win while this worker is claiming the job.
+                // SaveChanges is transactional, so neither its stage nor its log was saved.
+                db.ChangeTracker.Clear();
+                logger.LogInformation("Deployment {DeploymentId} changed before the worker claimed it", deployment.Id);
+            }
             catch (Exception error)
             {
                 logger.LogError(error, "Deployment {DeploymentId} failed", deployment.Id);
@@ -137,7 +144,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             {
                 foreach (var secret in snapshot.ProtectedEnvironment.Values.Select(protector.Unprotect).Where(v => v.Length > 0))
                     line = line.Replace(secret, "[REDACTED]", StringComparison.Ordinal);
-                db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line });
+                db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = "Runtime" });
                 await db.SaveChangesAsync(ct);
             }
             try
@@ -156,6 +163,26 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             }
         }
         await db.SaveChangesAsync(ct);
+    }
+
+    private async Task ReadRevision(Deployment deployment, string source, CancellationToken ct)
+    {
+        Task<string> Git(params string[] args) => runner.RunAsync("git", args, null, _ => Task.CompletedTask, ct, inheritEnvironment: false);
+        if (deployment.RequestedCommit is { } commit)
+        {
+            if (!ForgeDock.Application.ProjectConfiguration.IsCommitSha(commit))
+                throw new InvalidOperationException("Requested commit must be a full Git SHA.");
+            await Git("-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
+                "-C", source, "fetch", "--depth", "1", "origin", commit);
+            await Git("-C", source, "checkout", "--detach", commit);
+        }
+        deployment.CommitSha = await Git("-C", source, "rev-parse", "HEAD");
+        if (deployment.RequestedCommit is { } requested && !string.Equals(requested, deployment.CommitSha, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Fetched revision does not match the requested commit.");
+        var message = await Git("-C", source, "log", "-1", "--format=%s");
+        var author = await Git("-C", source, "log", "-1", "--format=%an");
+        deployment.CommitMessage = message[..Math.Min(message.Length, 500)];
+        deployment.CommitAuthor = author[..Math.Min(author.Length, 200)];
     }
 
     private async Task ExecuteDeployment(ForgeDockDbContext db, Deployment deployment, CancellationToken ct)
@@ -181,7 +208,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         {
             foreach (var value in snapshot.ProtectedEnvironment.Values.Select(protector.Unprotect).Where(v => v.Length > 0))
                 line = line.Replace(value, "[REDACTED]", StringComparison.Ordinal);
-            db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line });
+            db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = deployment.State is DeploymentState.Queued or DeploymentState.Preparing or DeploymentState.Cloning or DeploymentState.Building ? "Build" : "Runtime" });
             await db.SaveChangesAsync(ct);
         }
         async Task Stage(DeploymentState state)
@@ -198,7 +225,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             // Redirects and alternate Git protocols are disabled; operators must also restrict worker egress.
             await Run("git", "-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
                 "clone", "--depth", "1", "--single-branch", "--branch", snapshot.Branch, "--", snapshot.RepositoryUrl, source);
-            deployment.CommitSha = await Run("git", "-C", source, "rev-parse", "HEAD");
+            await ReadRevision(deployment, source, ct);
             await Stage(DeploymentState.Building);
             deployment.ImageTag = $"forgedock/{project.Id:N}:{deployment.Id:N}";
             var railpack = configuration["ForgeDock:RailpackPath"] ?? Path.Combine(root, "tools", "railpack");
