@@ -114,12 +114,12 @@ function App() {
       <label>Management token<input type="password" autoComplete="off" required value={token} onChange={e => setToken(e.target.value)} /></label>
       <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
     </form>{error && <p role="alert" className="error">{error}</p>}</main>;
-  return <div className="layout"><aside><div className="brand">◈ ForgeDock</div><span className="caption">WORKSPACE</span><button className="nav" onClick={() => { setSelected(null); setCreating(false); }}>Overview</button>
-    <div className="sidebar-title">Projects <button aria-label="Create project" onClick={() => setCreating(true)}>+</button></div>
-    {projects.map(p => <button key={p.id} className={'nav ' + (selected === p.id ? 'active' : '')} onClick={() => { setSelected(p.id); setCreating(false); }}>{p.name}</button>)}
-    <a className="nav" href="/docs" onClick={event => navigate(event, "/docs")}>Documentation ↗</a>
+  return <div className="layout"><aside><div className="brand">◈ ForgeDock</div><span className="caption">WORKSPACE</span><nav className="workspace-nav" aria-label="Main navigation"><button className={"nav " + (!selected && !creating ? "active" : "")} onClick={() => { setSelected(null); setCreating(false); }}>Projects</button></nav>
+    <div className="sidebar-title">Your projects <button aria-label="Create project" onClick={() => setCreating(true)}>+</button></div>
+    <nav className="project-nav" aria-label="Projects">{projects.map(p => <button key={p.id} className={'nav ' + (selected === p.id ? 'active' : '')} onClick={() => { setSelected(p.id); setCreating(false); }}>{p.name}</button>)}</nav>
+    <nav className="resource-nav" aria-label="Resources"><span className="caption">RESOURCES</span><a className="nav" href="/docs" onClick={event => navigate(event, "/docs")}>Documentation ↗</a></nav>
     <button className="signout" onClick={() => { setToken(''); setAuthenticated(false); setProjects([]); }}>Sign out</button></aside>
-    <main><header><span>Workspace / {project?.name ?? 'Overview'}</span><span className="badge">Self-hosted</span></header>
+    <main><header><span>Workspace / {project?.name ?? 'Projects'}</span><span className="badge">Self-hosted</span></header>
       {error && <div role="alert" className="error">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
       {creating ? <><h1>Create a project</h1><p>Deploy a public Git repository with automatic builds, a Dockerfile, or a Compose stack.</p><form className="panel form" onSubmit={e => {
         e.preventDefault(); const data = new FormData(e.currentTarget);
