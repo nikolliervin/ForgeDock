@@ -34,3 +34,5 @@ For multiple services, choose Docker Compose, set the repository-relative Compos
 Choose **Auto** to build repositories without a Dockerfile. See [automatic builds](docs/AUTOMATIC_BUILDS.md) for setup and command overrides.
 
 The built-in React documentation lives at http://127.0.0.1:5173/docs and is available without signing in. Built frontend hosting also serves documentation routes from the API.
+
+Custom application domains and automatic HTTPS are available through the project **Domains** tab after configuring a public server. See [custom domains setup](docs/CUSTOM_DOMAINS.md). Local development remains on loopback by default.
