@@ -40,7 +40,7 @@ def call(path, body=None, method=None, auth=True, headers=None):
     request = urllib.request.Request(BASE + path, data=data, headers=actual_headers, method=method)
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
-            return response.status, json.loads(response.read() or '{}')
+            return response.status, response.read() if response.headers.get('Content-Type', '').startswith('application/zip') else json.loads(response.read() or '{}')
     except urllib.error.HTTPError as error:
         return error.code, json.loads(error.read() or '{}')
 
@@ -129,6 +129,21 @@ try:
     subprocess.run(['docker', 'exec', 'forgedock-postgres', 'psql', '-U', 'forgedock', '-d', DB, '-c',
         'UPDATE "Operations" SET "State" = \'Completed\''], check=True, stdout=subprocess.DEVNULL)
     assert deliver(push, delivery=retry_delivery)[1]['status'] == 'Queued'
+    # Templates are authenticated, embedded and downloadable after publishing the API.
+    assert call('/templates', auth=False)[0] == 401
+    templates = call('/templates')[1]
+    assert len(templates) == 7
+    import io, zipfile
+    for template in templates:
+        code, archive = call('/templates/' + template['id'] + '/archive')
+        assert code == 200
+        with zipfile.ZipFile(io.BytesIO(archive)) as files: assert 'README.md' in files.namelist()
+    assert call('/templates/unknown/archive')[0] == 404
+    template = next(template for template in templates if template['id'] == 'fastapi')
+    code, starter = call('/projects', {**template, 'name': 'Template database starter', 'repositoryUrl': 'https://github.com/example/starter', 'branch': 'main', 'database': 'Redis'})
+    assert code == 201 and starter['containerPort'] == 8000 and starter['healthPath'] == '/health'
+    assert len(call('/projects/' + starter['id'] + '/databases')[1]) == 1
+    assert call('/projects/' + starter['id'] + '/environment')[1] == ['REDIS_URL']
     # Resource updates are validated and are captured by subsequent deployment snapshots.
     resource_path = f'/projects/{project_id}/resources'
     assert call(resource_path, {'cpuLimit': 0, 'memoryLimitMiB': 512}, 'PUT')[0] == 400

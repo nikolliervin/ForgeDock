@@ -28,8 +28,13 @@ test('database backups previews resource settings and notifications are availabl
   await page.getByRole('button', { name: 'Restore database', exact: true }).click();
   expect(writes.find(write => write.path.endsWith('/restore'))?.body).toEqual({ confirm: true });
   await page.getByRole('button', { name: 'Previews', exact: true }).click();
+  await expect(page.getByRole('note')).toContainText('Previews are disabled');
+  await expect(page.getByRole('note')).toContainText('Let me select individual events');
+  await expect(page.getByRole('note')).toContainText('main');
   await page.getByRole('button', { name: 'Enable previews', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Disable previews', exact: true })).toBeVisible();
+  await expect(page.getByRole('note')).toHaveCount(0);
+  await expect(page.getByText('Previews are enabled.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('CPU cores', { exact: true }).fill('0.5'); await page.getByLabel('Memory (MiB)', { exact: true }).fill('256');
   await page.getByRole('button', { name: 'Save resource controls', exact: true }).click();

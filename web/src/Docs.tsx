@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { navigate } from './navigation';
 import './docs.css';
+import { platformArticles } from './PlatformDocs';
 
 type Section = { id: string; title: string; content: ReactNode };
-type Article = { slug: string; title: string; summary: string; group: string; keywords: string; sections: Section[] };
+export type Article = { slug: string; title: string; summary: string; group: string; keywords: string; sections: Section[] };
 
 function Code({ children, language = 'bash' }: { children: string; language?: string }) {
   const [copied, setCopied] = useState(false);
@@ -107,6 +108,7 @@ ForgeDock__Domains__HttpsPort=443`}</Code><p>Make ports <strong>80</strong> and 
     { id: 'ports', title: 'Match the application port', content: <><p>The container port in Settings must match the server's actual listening port. Bind your server to <code>0.0.0.0</code>. Auto mode supplies a default runtime <code>PORT</code>; an explicitly saved PORT takes precedence.</p><div className="docs-table-wrap"><table><thead><tr><th>Local service</th><th>Address</th></tr></thead><tbody><tr><td>Dashboard & documentation</td><td><code>127.0.0.1:5173</code></td></tr><tr><td>Management API</td><td><code>127.0.0.1:5080</code></td></tr><tr><td>Application proxy</td><td><code>127.0.0.1:8088</code></td></tr><tr><td>PostgreSQL</td><td><code>127.0.0.1:5432</code></td></tr></tbody></table></div></> },
     { id: 'routes', title: 'Open your application route', content: <><p>Each project gets an HTTP route based on its ID:</p><Code language="text">{"http://<project-id-without-hyphens>.localhost:8088"}</Code><p>Use the application link in the dashboard after the deployment reaches Running. Local service ports bind to loopback. Add a custom domain in the Domains tab for public HTTPS. Configure your server first; the local URL remains available.</p></> },
   ]},
+  ...platformArticles(Code),
   { slug: 'troubleshooting', title: 'Troubleshooting', group: 'OPERATE', summary: 'Find the failing stage and get back to shipping.', keywords: 'errors failure docker unavailable missing railpack health timeout install buildkit database migrations', sections: [
     { id: 'console', title: 'Inspect the running application', content: <><p>Open your project's <strong>Console</strong> tab to run shell commands in the active application container. Compose projects target the public service. Each command starts a fresh shell with the container's configured user; use <code>cd /app &amp;&amp; ls</code> to change directory and inspect files in one command.</p><p>The console shows output and exit codes, with up to 64 KiB per command. Use the up and down arrow keys to recall commands. The container image needs <code>/bin/sh</code>; interactive programs are not supported. Requests wait up to 30 seconds, and commands may continue inside the container after a timeout.</p><p>Start the application and wait for deployments or project operations to finish before using the console. Containers with host access or bind mounts cannot use it. Commands can change application files and data; changes outside persistent volumes disappear on redeploy.</p></> },
     { id: 'startup', title: 'The workspace will not start', content: <><p>Check that the required commands are installed, Docker is running, and your user can access it:</p><Code>{"dotnet --version\nnode --version\ndocker info"}</Code><p>Make sure ports 5173, 5080, 8088, and 5432 are available. The startup script preserves your existing <code>.env</code>; verify it contains a valid connection string, token, secret key, and absolute runtime paths.</p></> },

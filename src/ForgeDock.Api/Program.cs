@@ -51,11 +51,12 @@ api.MapDatabaseEndpoints();
 api.MapBackupEndpoints();
 api.MapPreviewEndpoints();
 api.MapResourceEndpoints();
+api.MapTemplateEndpoints();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(
         p.Id, p.Name, p.RepositoryUrl, p.Branch, p.Dockerfile, p.ContainerPort, p.HealthPath, p.ActiveDeploymentId, p.HealthStatus, p.DeploymentMode, p.ComposeFile, p.ComposeService, p.BuildCommand, p.StartCommand, p.RootDirectory)).ToListAsync(ct));
-api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, CancellationToken ct) =>
+api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, SecretProtector protector, CancellationToken ct) =>
 {
     var errors = request.Validate();
     if (errors.Count > 0) return Results.ValidationProblem(new Dictionary<string, string[]> { ["configuration"] = errors.ToArray() });
@@ -63,6 +64,13 @@ api.MapPost("/projects", async (ProjectRequest request, ForgeDockDbContext db, C
         DeploymentMode = request.DeploymentMode, ComposeFile = request.ComposeFile, ComposeService = request.ComposeService,
         BuildCommand = request.BuildCommand, StartCommand = request.StartCommand, RootDirectory = request.RootDirectory, Dockerfile = request.Dockerfile, ContainerPort = request.ContainerPort, HealthPath = request.HealthPath };
     db.Projects.Add(project);
+    if (request.Database is { } kind)
+    {
+        var password = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var service = new DatabaseService { ProjectId = project.Id, Kind = kind, ProtectedPassword = protector.Protect(password) };
+        db.DatabaseServices.Add(service);
+        db.EnvironmentVariables.Add(new ProjectEnvironment { ProjectId = project.Id, Name = DatabaseRuntime.Variable(kind), ProtectedValue = protector.Protect(DatabaseRuntime.Connection(service, password)) });
+    }
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/projects/{project.Id}", ProjectResponse.From(project));
 });
@@ -207,10 +215,10 @@ public record OperationRequest(ProjectOperationKind Kind);
 
 public record ProjectRequest(string Name, string RepositoryUrl, string Branch = "main", string Dockerfile = "Dockerfile",
     int ContainerPort = 8080, string HealthPath = "/", DeploymentMode DeploymentMode = DeploymentMode.Dockerfile,
-    string ComposeFile = "docker-compose.yml", string ComposeService = "", string BuildCommand = "", string StartCommand = "", string RootDirectory = ".")
+    string ComposeFile = "docker-compose.yml", string ComposeService = "", string BuildCommand = "", string StartCommand = "", string RootDirectory = ".", DatabaseKind? Database = null)
 {
     public IReadOnlyList<string> Validate() => ProjectConfiguration.Validate(Name ?? "", RepositoryUrl ?? "", Branch ?? "",
-        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "", BuildCommand, StartCommand, RootDirectory);
+        Dockerfile ?? "", ContainerPort, HealthPath ?? "", DeploymentMode, ComposeFile ?? "", ComposeService ?? "", BuildCommand, StartCommand, RootDirectory).Concat(Database is { } kind && !Enum.IsDefined(kind) ? new[] { "Unsupported database service." } : Array.Empty<string>()).ToArray();
 }
 public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string Branch, string Dockerfile,
     int ContainerPort, string HealthPath, Guid? ActiveDeploymentId, string HealthStatus,

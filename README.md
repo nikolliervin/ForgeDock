@@ -50,3 +50,14 @@ The Console tab runs shell commands in the active application container (the pub
 ### GitHub auto-deploy
 
 Enable **GitHub auto-deploy** in a project's Settings, then add its payload URL and one-time secret to the repository's GitHub webhook settings. Select JSON payloads and push events. Matching pushes queue the exact commit with the project's current saved configuration; repeated deliveries are ignored. Secrets are encrypted, can be rotated, and are never returned by normal reads. A public HTTPS webhook endpoint is required. Test locally with a Cloudflare Quick Tunnel using the [step-by-step setup and troubleshooting guide](docs/GITHUB_WEBHOOKS.md). The same guide is available at `/docs/github-webhooks` in the dashboard.
+
+### Project services and automation
+
+- [Deployment notifications](docs/NOTIFICATIONS.md): encrypted Slack/Discord webhooks and existing SMTP, with durable retries and exact deployment log links.
+- [Database services](docs/DATABASE_SERVICES.md): private PostgreSQL/Redis, persistent volumes, and encrypted connection variables.
+- [Backups and restore](docs/BACKUPS.md): scheduled encrypted snapshots, retention, and confirmed dashboard restoration.
+- [PR preview environments](docs/PREVIEW_ENVIRONMENTS.md): isolated deployments and databases, unique URLs, and close-event cleanup.
+- [Resource controls](docs/RESOURCE_CONTROLS.md): snapshotted CPU/memory quotas and durable crash/pressure alerts.
+- [Project templates](docs/PROJECT_TEMPLATES.md): editable stack defaults and downloadable starter repositories.
+
+All six guides are also available in the built-in documentation. Apply migrations and restart the API and worker after updating the backend; `./scripts/start-local.sh` performs those steps on startup.
