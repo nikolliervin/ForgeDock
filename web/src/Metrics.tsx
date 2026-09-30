@@ -29,7 +29,7 @@ export function Metrics({ projectId, api }: { projectId: string; api: Api }) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let disposed = false, timer: ReturnType<typeof setTimeout>;
-    setData(null); setError('');
+    setError('');
     async function load() { try { const result = await api<MetricsData>(`/projects/${projectId}/metrics?range=${range}${service ? `&service=${encodeURIComponent(service)}` : ''}`); if (!disposed) { setData(result); setError(''); } } catch (e) { if (!disposed) setError((e as Error).message); } finally { if (!disposed) timer = setTimeout(() => void load(), 10000); } }
     void load(); return () => { disposed = true; clearTimeout(timer); };
   }, [projectId, api, range, service, retry]);

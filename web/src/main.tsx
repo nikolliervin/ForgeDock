@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 import { Docs } from './Docs';
@@ -38,7 +38,7 @@ function App() {
   const [tab, setTab] = useState<'deployments' | 'metrics' | 'domains' | 'environment' | 'settings'>('deployments');
   const project = projects.find(p => p.id === selected);
   const deployment = deployments.find(d => d.id === deploymentId) ?? deployments[0];
-  async function api<T>(path: string, body?: unknown, method?: string): Promise<T> {
+  const api = useCallback(async <T,>(path: string, body?: unknown, method?: string): Promise<T> => {
     const response = await fetch('/api' + path, { method: method ?? (body === undefined ? 'GET' : 'POST'),
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body) });
@@ -48,7 +48,7 @@ function App() {
       throw new Error(problem.errors ? Object.values(problem.errors).flat().join(' ') : problem.error ?? problem.detail ?? problem.title ?? `Request failed (${response.status})`);
     }
     return response.status === 204 ? undefined as T : response.json();
-  }
+  }, [token]);
   async function action(task: () => Promise<void>) {
     setBusy(true); setError('');
     try { await task(); } catch (e) { setError(e instanceof Error ? e.message : 'Request failed.'); }

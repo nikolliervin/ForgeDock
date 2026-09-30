@@ -50,3 +50,33 @@ test('metrics errors can be retried', async ({ page }) => {
   options.error = false; await page.getByRole('button', { name: 'Retry' }).click();
   await expect(page.getByText('Live · sampled every 30 seconds')).toBeVisible();
 });
+
+
+test('background polling preserves charts and scroll position', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.clock.install();
+  let requests = 0;
+  await setup(page);
+  await expect(page.getByRole('img', { name: 'Network transfer history' })).toBeVisible();
+  await page.route('**/api/projects/*/metrics?*', async route => {
+    requests++;
+    // Hold the response so any loading collapse is observable.
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const data = response();
+    data.latest[0].cpuPercent = 25;
+    await route.fulfill({ json: data });
+  });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scroll = await page.evaluate(() => window.scrollY);
+  expect(scroll).toBeGreaterThan(0);
+  await page.clock.runFor(4500);
+  expect(requests).toBe(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  await page.clock.runFor(6000);
+  await expect.poll(() => requests).toBe(1);
+  await expect(page.getByRole('img', { name: 'CPU usage history' })).toHaveCount(1);
+  await expect(page.getByText('Loading metrics…')).toHaveCount(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  await expect(page.getByRole('cell', { name: '25.00%', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+});
