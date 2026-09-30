@@ -20,9 +20,9 @@ public sealed class HttpsEdge(ProcessRunner runner, string runtimePath, DomainSe
         result.AppendLine("{").AppendLine("  admin localhost:2019").AppendLine("  persist_config off")
             .AppendLine($"  email {DomainSettings.Quote(settings.Email)}")
             .AppendLine($"  acme_ca {DomainSettings.Quote(settings.AcmeDirectory)}").AppendLine("}")
-            .AppendLine(":80 { respond \"Not found\" 404 }");
+            .AppendLine(":80 {").AppendLine("  respond \"Not found\" 404").AppendLine("}");
         foreach (var host in hosts)
-            result.AppendLine($"https://{host} {{ reverse_proxy forgedock-proxy:80 }}");
+            result.AppendLine($"https://{host} {{").AppendLine("  reverse_proxy forgedock-proxy:80").AppendLine("}");
         return result.ToString();
     }
 

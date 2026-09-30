@@ -31,7 +31,9 @@ if [[ ! -f "$root/edge/config/Caddyfile" ]]; then
   admin localhost:2019
   persist_config off
 }
-:80 { respond "Not found" 404 }
+:80 {
+  respond "Not found" 404
+}
 CADDY
 fi
 if docker container inspect "$name" >/dev/null 2>&1; then
@@ -48,7 +50,7 @@ else
   publish_binding=$binding
   [[ $binding != :: ]] || publish_binding='[::]'
   docker run -d --name "$name" --label io.forgedock.managed=true --network forgedock --restart unless-stopped \
-    --user "$(id -u):$(id -g)" --cap-drop ALL --security-opt no-new-privileges:true --memory 256m --cpus 1 --pids-limit 128 \
+    --user "$(id -u):$(id -g)" --cap-drop ALL --cap-add NET_BIND_SERVICE --security-opt no-new-privileges:true --memory 256m --cpus 1 --pids-limit 128 \
     -p "$publish_binding:$http_port:80" -p "$publish_binding:$https_port:443" \
     -v "$root/edge/config:/etc/caddy:ro,z" -v "$root/edge/data:/data:z" -v "$root/edge/state:/config:z" \
     caddy:2.11.4-alpine >/dev/null

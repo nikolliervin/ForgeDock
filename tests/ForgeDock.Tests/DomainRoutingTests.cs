@@ -10,7 +10,7 @@ public sealed class DomainRoutingTests
     {
         var config = HttpsEdge.BuildConfiguration(Settings, ["app.example.com", "api.example.com", "app.example.com"]);
         Assert.Contains("admin localhost:2019", config);
-        Assert.Contains("https://app.example.com { reverse_proxy forgedock-proxy:80 }", config);
+        Assert.Contains("https://app.example.com {\n  reverse_proxy forgedock-proxy:80\n}", config);
         Assert.Equal(1, config.Split("https://app.example.com").Length - 1);
         Assert.DoesNotContain("on_demand", config);
         Assert.Throws<InvalidOperationException>(() => HttpsEdge.BuildConfiguration(Settings, ["app.example.com { respond evil }"]));
