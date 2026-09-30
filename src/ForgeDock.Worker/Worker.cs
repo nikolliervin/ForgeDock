@@ -19,6 +19,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         using (var scope = scopes.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
+            foreach (var backup in await db.DatabaseBackups.Where(b => b.State == "Running").ToListAsync(stoppingToken))
+            { backup.State = "Failed"; backup.Error = "Worker interrupted. Inspect the database and restart the app before retrying a restore."; backup.FinishedAt = DateTimeOffset.UtcNow; }
             var interrupted = await db.Deployments.Where(d => d.State != DeploymentState.Queued &&
                 d.State != DeploymentState.Running && d.State != DeploymentState.Stopped && d.State != DeploymentState.Failed && d.State != DeploymentState.Cancelled).ToListAsync(stoppingToken);
             foreach (var deployment in interrupted)
@@ -49,6 +51,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
                 nextMonitor = DateTimeOffset.UtcNow.AddSeconds(30);
             }
             await ProvisionDatabases(db, stoppingToken);
+            await ProcessBackups(db, stoppingToken);
             var operation = await db.Operations.OrderBy(o => o.CreatedAt).FirstOrDefaultAsync(o => o.State == ProjectOperationState.Queued, stoppingToken);
             if (operation is not null)
             {

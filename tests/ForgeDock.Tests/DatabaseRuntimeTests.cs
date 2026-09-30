@@ -8,7 +8,8 @@ public class DatabaseRuntimeTests
     public async Task DatabasesPersistAndArePrivate()
     {
         var project = Guid.NewGuid(); var root = Path.Combine(Path.GetTempPath(), "forgedock-db-test-" + project);
-        var protector = new SecretProtector(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+        var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        var protector = new SecretProtector(key);
         var runtime = new DatabaseRuntime(new ProcessRunner(), protector, root);
         var services = new[] { DatabaseKind.PostgreSql, DatabaseKind.Redis }.Select(kind => new DatabaseService { ProjectId = project, Kind = kind,
             ProtectedPassword = protector.Protect(Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32))) }).ToArray();
@@ -21,6 +22,12 @@ public class DatabaseRuntimeTests
                 if (service.Kind == DatabaseKind.PostgreSql)
                     await runtime.Docker(["exec", DatabaseRuntime.Container(service), "psql", "-U", "app", "-d", "app", "-c", "CREATE TABLE persisted(value text); INSERT INTO persisted VALUES ('kept');"], default);
                 else await runtime.Docker(["exec", DatabaseRuntime.Container(service), "sh", "-c", "REDISCLI_AUTH=\"$REDIS_PASSWORD\" redis-cli SET persisted kept"], default);
+                var backups = new BackupRuntime(runtime, root, key); var backupId = Guid.NewGuid();
+                Assert.True(await backups.Create(service, backupId, default) > 0);
+                if (service.Kind == DatabaseKind.PostgreSql)
+                    await runtime.Docker(["exec", DatabaseRuntime.Container(service), "psql", "-U", "app", "-d", "app", "-c", "UPDATE persisted SET value='changed'; CREATE TABLE extra(id int);"], default);
+                else await runtime.Docker(["exec", DatabaseRuntime.Container(service), "sh", "-c", "REDISCLI_AUTH=\"$REDIS_PASSWORD\" redis-cli SET persisted changed"], default);
+                await backups.Restore(service, backupId, default);
                 await runtime.Stop(service, true, default); await runtime.Provision(service, default);
                 var value = await runtime.Docker(service.Kind == DatabaseKind.PostgreSql
                     ? ["exec", DatabaseRuntime.Container(service), "psql", "-U", "app", "-d", "app", "-Atc", "SELECT value FROM persisted"]

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 type Api = <T>(path: string, body?: unknown, method?: string) => Promise<T>;
-export type Database = { id: string; kind: 'PostgreSql' | 'Redis'; state: string; error: string | null };
+export type Database = { id: string; kind: 'PostgreSql' | 'Redis'; state: string; error: string | null; backupIntervalHours?: number; nextBackupAt?: string | null };
 export function Databases({ projectId, api }: { projectId: string; api: Api }) {
   const [services, setServices] = useState<Database[]>([]), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   async function refresh() { try { setServices(await api<Database[]>(`/projects/${projectId}/databases`)); } catch (e) { setError((e as Error).message); } }

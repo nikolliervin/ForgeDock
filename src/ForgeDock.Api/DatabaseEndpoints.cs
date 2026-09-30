@@ -9,7 +9,7 @@ public static class DatabaseEndpoints
     {
         api.MapGet("/projects/{id:guid}/databases", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
             !await db.Projects.AnyAsync(p => p.Id == id, ct) ? Results.NotFound() : Results.Ok(await db.DatabaseServices.AsNoTracking().Where(s => s.ProjectId == id)
-                .Select(s => new { s.Id, s.Kind, s.State, s.Error, s.CreatedAt }).ToListAsync(ct)));
+                .Select(s => new { s.Id, s.Kind, s.State, s.Error, s.CreatedAt, s.BackupIntervalHours, s.NextBackupAt }).ToListAsync(ct)));
         api.MapPost("/projects/{id:guid}/databases", async (Guid id, DatabaseRequest request, ForgeDockDbContext db, SecretProtector protector, CancellationToken ct) =>
         {
             if (!Enum.IsDefined(request.Kind)) return Results.BadRequest();
