@@ -48,6 +48,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
                 await MonitorApplications(db, stoppingToken);
                 nextMonitor = DateTimeOffset.UtcNow.AddSeconds(30);
             }
+            await ProvisionDatabases(db, stoppingToken);
             var operation = await db.Operations.OrderBy(o => o.CreatedAt).FirstOrDefaultAsync(o => o.State == ProjectOperationState.Queued, stoppingToken);
             if (operation is not null)
             {
@@ -119,6 +120,10 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             await Run("stop", name);
             if (operation.Kind == ProjectOperationKind.Delete) await Run("rm", name);
             if (deployment.State == DeploymentState.Running) deployment.TransitionTo(DeploymentState.Stopped);
+        }
+        foreach (var service in await db.DatabaseServices.Where(s => s.ProjectId == project.Id).ToListAsync(ct))
+        {
+            await Databases.Stop(service, operation.Kind == ProjectOperationKind.Delete, ct); service.State = "Stopped";
         }
         project.HealthStatus = "Stopped";
         if (operation.Kind == ProjectOperationKind.Delete) db.Projects.Remove(project);
@@ -257,6 +262,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         finally { if (File.Exists(environmentFile)) File.Delete(environmentFile); }
         deployment.ContainerId = container;
         await db.SaveChangesAsync(ct);
+        await AttachDatabases(db, project.Id, container, ct);
         await Run("docker", "start", container);
         await Stage(DeploymentState.HealthChecking);
         var healthy = false;

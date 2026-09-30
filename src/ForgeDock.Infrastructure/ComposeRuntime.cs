@@ -80,6 +80,7 @@ public sealed class ComposeRuntime(ProcessRunner runner, SecretProtector protect
             var names = await Docker(["network", "ls", "--filter", $"label=io.forgedock.project={projectId}", "--format", "{{.Name}}"], ct);
             foreach (var name in names.Split('\n', StringSplitOptions.RemoveEmptyEntries))
             {
+                if (name == DatabaseRuntime.Network(projectId)) continue;
                 var info = JsonNode.Parse(await Docker(["network", "inspect", name], ct))!.AsArray()[0]!;
                 CheckLabels(info["Labels"], projectId);
                 await Docker(["network", "rm", name], ct);

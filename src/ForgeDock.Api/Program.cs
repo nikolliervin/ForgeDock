@@ -47,6 +47,7 @@ api.MapEnvironmentEndpoints();
 api.MapConsoleEndpoints();
 api.MapWebhookEndpoints();
 api.MapNotificationEndpoints();
+api.MapDatabaseEndpoints();
 api.MapGet("/session", () => new { name = "operator" });
 api.MapGet("/projects", async (ForgeDockDbContext db, CancellationToken ct) =>
     await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).Select(p => new ProjectResponse(

@@ -48,6 +48,14 @@ public sealed partial class Worker
             else
                 model = deployment.ProtectedComposeManifest is { } artifact ? ReadCompose(artifact)
                     : throw new InvalidOperationException("Retained Compose deployment manifest is missing.");
+            if (await db.DatabaseServices.AnyAsync(s => s.ProjectId == project.Id, ct))
+            {
+                var services = await db.DatabaseServices.Where(s => s.ProjectId == project.Id).ToListAsync(ct);
+                if (services.Any(s => s.State != "Running")) throw new InvalidOperationException("A managed database is not running.");
+                model["networks"]!["forgedock_databases"] = new JsonObject { ["external"] = true, ["name"] = DatabaseRuntime.Network(project.Id) };
+                model["services"]![snapshot.ComposeService]!["networks"]!["forgedock_databases"] = new JsonObject();
+                deployment.ProtectedComposeManifest = protector.Protect(model.ToJsonString());
+            }
             await Stage(DeploymentState.Starting);
             project.HealthStatus = "Deploying";
             deployment.ContainerId = ComposeDefinition.ContainerName(project.Id, snapshot.ComposeService);

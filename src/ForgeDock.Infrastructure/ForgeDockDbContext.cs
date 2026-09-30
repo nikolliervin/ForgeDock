@@ -5,6 +5,7 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<DatabaseService> DatabaseServices => Set<DatabaseService>();
     public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
@@ -19,6 +20,9 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<DatabaseService>().Property(d => d.Kind).HasConversion<string>();
+        model.Entity<DatabaseService>().HasIndex(d => new { d.ProjectId, d.Kind }).IsUnique();
+        model.Entity<DatabaseService>().HasOne<Project>().WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<NotificationSettings>().HasKey(n => n.ProjectId);
         model.Entity<NotificationSettings>().HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<NotificationDelivery>().HasIndex(n => new { n.DeploymentId, n.Event, n.Channel }).IsUnique();
