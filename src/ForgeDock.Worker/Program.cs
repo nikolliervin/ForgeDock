@@ -12,4 +12,5 @@ builder.Services.AddSingleton<ProcessRunner>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<MetricsCollector>();
 builder.Services.AddHostedService<NotificationWorker>();
+builder.Services.AddHostedService<ResourceMonitor>();
 await builder.Build().RunAsync();

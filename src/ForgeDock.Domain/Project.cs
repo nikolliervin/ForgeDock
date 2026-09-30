@@ -4,6 +4,9 @@ public enum DeploymentMode { Dockerfile, Compose, Auto }
 
 public sealed class Project
 {
+    public double CpuLimit { get; set; } = 1;
+    public int MemoryLimitMiB { get; set; } = 512;
+    public bool ResourceAlertsEnabled { get; set; } = true;
     public bool PreviewsEnabled { get; set; }
     public Guid? ParentProjectId { get; set; }
     public int? PullRequestNumber { get; set; }

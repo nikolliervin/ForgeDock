@@ -5,6 +5,8 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<ResourceAlert> ResourceAlerts => Set<ResourceAlert>();
+    public DbSet<ResourceObservation> ResourceObservations => Set<ResourceObservation>();
     public DbSet<PreviewEnvironment> PreviewEnvironments => Set<PreviewEnvironment>();
     public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
     public DbSet<DatabaseService> DatabaseServices => Set<DatabaseService>();
@@ -22,6 +24,13 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<Project>().Property(p => p.CpuLimit).HasDefaultValue(1.0);
+        model.Entity<Project>().Property(p => p.MemoryLimitMiB).HasDefaultValue(512);
+        model.Entity<Project>().Property(p => p.ResourceAlertsEnabled).HasDefaultValue(true);
+        model.Entity<ResourceAlert>().HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<ResourceAlert>().HasIndex(a => new { a.ProjectId, a.CreatedAt });
+        model.Entity<ResourceObservation>().HasKey(o => o.ProjectId);
+        model.Entity<ResourceObservation>().HasOne<Project>().WithMany().HasForeignKey(o => o.ProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<PreviewEnvironment>().HasKey(p => new { p.ParentProjectId, p.Number });
         model.Entity<PreviewEnvironment>().HasOne<Project>().WithMany().HasForeignKey(p => p.ParentProjectId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<DatabaseBackup>().HasOne<DatabaseService>().WithMany().HasForeignKey(b => b.ServiceId).OnDelete(DeleteBehavior.Cascade);

@@ -40,6 +40,7 @@ public sealed class ComposeRuntime(ProcessRunner runner, SecretProtector protect
             var config = await Compose(file, environment, ComposeDefinition.StackName(projectId),
                 ["config", "--format", "json"], _ => Task.CompletedTask, ct);
             var model = ComposeDefinition.Normalize(config, source, projectId, deploymentId, snapshot.ComposeService, network);
+            ResourceLimits.ApplyCompose(model, snapshot);
             await AssertOwnershipAsync(model, projectId, ct);
             var safeLog = RedactedLog(model, log);
             manifest = await PrivateFile(model.ToJsonString(), ct);

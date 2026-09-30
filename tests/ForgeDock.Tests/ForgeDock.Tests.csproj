@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ForgeDock.Infrastructure\ForgeDock.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ForgeDock.Worker\ForgeDock.Worker.csproj" />
   </ItemGroup>
 
 </Project>

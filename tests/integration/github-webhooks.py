@@ -129,6 +129,11 @@ try:
     subprocess.run(['docker', 'exec', 'forgedock-postgres', 'psql', '-U', 'forgedock', '-d', DB, '-c',
         'UPDATE "Operations" SET "State" = \'Completed\''], check=True, stdout=subprocess.DEVNULL)
     assert deliver(push, delivery=retry_delivery)[1]['status'] == 'Queued'
+    # Resource updates are validated and are captured by subsequent deployment snapshots.
+    resource_path = f'/projects/{project_id}/resources'
+    assert call(resource_path, {'cpuLimit': 0, 'memoryLimitMiB': 512}, 'PUT')[0] == 400
+    assert call(resource_path, {'cpuLimit': 0.5, 'memoryLimitMiB': 256, 'alertsEnabled': True}, 'PUT')[0] == 204
+    assert call(resource_path)[1]['cpuLimit'] == 0.5
     # Notification settings never expose stored webhooks and reject arbitrary destinations.
     notification_path = f'/projects/{project_id}/notifications'
     assert call(notification_path, {'onSuccess': True, 'onFailure': True, 'slackUrl': 'https://localhost/hook'}, 'PUT')[0] == 400

@@ -23,7 +23,7 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
     {
         using var scope = scopes.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        if (!await db.Database.SqlQueryRaw<bool>("SELECT pg_try_advisory_xact_lock(74623020) AS \"Value\"").SingleAsync(ct)) return;
+        if (!await db.Database.SqlQueryRaw<bool>("SELECT pg_try_advisory_xact_lock(74623021) AS \"Value\"").SingleAsync(ct)) return;
         foreach (var settings in await db.NotificationSettings.ToListAsync(ct))
         {
             var deployments = await db.Deployments.Where(d => d.ProjectId == settings.ProjectId && d.CreatedAt >= settings.EnabledAt &&

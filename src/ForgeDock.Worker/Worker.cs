@@ -264,10 +264,10 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
                 foreach (var (name, value) in snapshot.ProtectedEnvironment)
                     await writer.WriteLineAsync($"{name}={protector.Unprotect(value)}");
             }
-            await Run("docker", "create", "--name", container, "--network", network, "--label", "io.forgedock.managed=true",
+            await runner.RunAsync("docker", ["create", "--name", container, "--network", network, "--label", "io.forgedock.managed=true",
                 "--label", $"io.forgedock.project={project.Id}", "--label", $"io.forgedock.deployment={deployment.Id}",
-                "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true", "--memory", "512m", "--cpus", "1", "--pids-limit", "256",
-                "--env-file", environmentFile, deployment.ImageTag!);
+                "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true", "--pids-limit", "256",
+                "--env-file", environmentFile, .. ResourceLimits.DockerArguments(snapshot.CpuLimit, snapshot.MemoryLimitMiB), deployment.ImageTag!], null, Log, ct);
         }
         finally { if (File.Exists(environmentFile)) File.Delete(environmentFile); }
         deployment.ContainerId = container;

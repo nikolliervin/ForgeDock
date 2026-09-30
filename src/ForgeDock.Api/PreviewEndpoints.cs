@@ -62,6 +62,7 @@ public static class PreviewEndpoints
         project.RepositoryUrl = parent.RepositoryUrl; project.Branch = request.Branch!; project.DeploymentMode = parent.DeploymentMode;
         project.Dockerfile = parent.Dockerfile; project.ComposeFile = parent.ComposeFile; project.ComposeService = parent.ComposeService;
         project.BuildCommand = parent.BuildCommand; project.StartCommand = parent.StartCommand; project.RootDirectory = parent.RootDirectory;
+        project.CpuLimit = parent.CpuLimit; project.MemoryLimitMiB = parent.MemoryLimitMiB;
         project.ContainerPort = parent.ContainerPort; project.HealthPath = parent.HealthPath;
         // Preview secrets are independent; production environment variables are never copied.
         var environment = await db.EnvironmentVariables.Where(e => e.ProjectId == project.Id).ToListAsync(ct);
