@@ -37,3 +37,10 @@
 
 .docs-brand{align-items:center;line-height:1}.docs-logo{display:block;width:28px;height:28px;flex-shrink:0}.docs-brand-label{line-height:1}.docs-brand-divider{align-self:center}
 @media(max-width:600px){.docs-logo{width:24px;height:24px}}
+
+/* Anchor navigation to the page edge while keeping the article column readable. */
+.docs-layout{max-width:none;margin:0;grid-template-columns:252px minmax(0,1fr) 210px;justify-content:stretch}
+.docs-main{width:100%;max-width:920px;justify-self:center}
+@media(max-width:1150px){.docs-layout{grid-template-columns:228px minmax(0,1fr)}}
+@media(max-width:800px){.docs-layout{grid-template-columns:200px minmax(0,1fr)}}
+@media(max-width:600px){.docs-main{max-width:none}}

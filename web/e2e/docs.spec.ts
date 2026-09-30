@@ -77,3 +77,18 @@ test('desktop documentation overview', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: '../.runtime/screenshots/docs-desktop.png', fullPage: true });
 });
+
+test('desktop docs navigation stays at the left page edge', async ({ page }) => {
+  for (const width of [1366, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/docs');
+    const sidebar = (await page.getByRole('navigation', { name: 'Documentation', exact: true }).boundingBox())!;
+    expect(sidebar.x).toBe(0);
+    expect(sidebar.width).toBe(252);
+    const article = (await page.locator('.docs-main').boundingBox())!;
+    expect(article.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+    expect(article.width).toBeLessThanOrEqual(920);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.screenshot({ path: '../.runtime/screenshots/docs-left-navigation.png', fullPage: true });
+});
