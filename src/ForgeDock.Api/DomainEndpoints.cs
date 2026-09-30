@@ -62,7 +62,7 @@ public static class DomainEndpoints
 public record DomainRequest(string Hostname);
 public record DomainRecord(string Type, string Name, string Value);
 public record DomainResponse(Guid Id, string Hostname, CustomDomainState State, bool VerificationRequested,
-    DateTimeOffset? DnsVerifiedAt, DateTimeOffset? CertificateExpiresAt, string? Error, IReadOnlyList<DomainRecord> DnsRecords)
+    DateTimeOffset? DnsVerifiedAt, DateTimeOffset? CertificateExpiresAt, bool CertificateTrusted, string? Error, IReadOnlyList<DomainRecord> DnsRecords)
 {
     public static DomainResponse From(CustomDomain domain, DomainSettings settings)
     {
@@ -70,6 +70,6 @@ public record DomainResponse(Guid Id, string Hostname, CustomDomainState State, 
         foreach (var address in settings.Addresses)
             if (IPAddress.TryParse(address, out var ip)) records.Add(new(ip.AddressFamily == AddressFamily.InterNetwork ? "A" : "AAAA", domain.Hostname, address));
         return new(domain.Id, domain.Hostname, domain.State, domain.VerificationRequested, domain.DnsVerifiedAt,
-            domain.CertificateExpiresAt, domain.Error, records);
+            domain.CertificateExpiresAt, domain.CertificateTrusted, domain.Error, records);
     }
 }

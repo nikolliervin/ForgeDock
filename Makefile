@@ -1,4 +1,4 @@
-.PHONY: init infra migrate api worker web test build e2e compose docker-test railpack
+.PHONY: init infra migrate api worker web test build e2e compose docker-test railpack edge
 init:
 	bash scripts/init-local.sh
 infra:
@@ -31,3 +31,6 @@ docker-test:
 
 railpack:
 	bash scripts/install-railpack.sh
+
+edge:
+	bash scripts/start-edge.sh

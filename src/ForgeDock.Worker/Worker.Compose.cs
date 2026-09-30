@@ -56,7 +56,7 @@ public sealed partial class Worker
             await WaitForComposeHttp(project.Id, snapshot, ct);
             deployment.ServiceStatusJson = JsonSerializer.Serialize(await ComposeEngine.StatusAsync(project.Id, ct));
             await Stage(DeploymentState.Routing);
-            await RouteCompose(project.Id, snapshot, ct);
+            await RouteCompose(db, project.Id, snapshot, ct);
             project.ActiveDeploymentId = deployment.Id; project.HealthStatus = "Running";
             await Stage(DeploymentState.Running);
             if (previous is not null)
@@ -88,7 +88,7 @@ public sealed partial class Worker
                         await Log("Deployment failed; restoring the previous Compose images and configuration.");
                         await ComposeEngine.StartAsync(ReadCompose(retained), project.Id, Log, ct);
                         await WaitForComposeHttp(project.Id, old, ct);
-                        await RouteCompose(project.Id, old, ct);
+                        await RouteCompose(db, project.Id, old, ct);
                         project.HealthStatus = "Running";
                     }
                     else
@@ -124,12 +124,13 @@ public sealed partial class Worker
         throw new InvalidOperationException("Selected Compose service did not pass its HTTP health check within 60 seconds.");
     }
 
-    private async Task RouteCompose(Guid projectId, DeploymentSnapshot snapshot, CancellationToken ct)
+    private async Task RouteCompose(ForgeDockDbContext db, Guid projectId, DeploymentSnapshot snapshot, CancellationToken ct)
     {
         var root = Path.GetFullPath(configuration["ForgeDock:RuntimePath"] ?? ".runtime");
         var route = Path.Combine(root, "routes", $"{projectId:N}.conf"); Directory.CreateDirectory(Path.GetDirectoryName(route)!);
         var before = File.Exists(route) ? await File.ReadAllTextAsync(route, ct) : null;
-        var config = $"server {{ listen 80; server_name {projectId:N}.localhost; location / {{ resolver 127.0.0.11 valid=10s; set $forgedock_upstream http://{ComposeDefinition.ContainerName(projectId, snapshot.ComposeService)}:{snapshot.ContainerPort}; proxy_pass $forgedock_upstream; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Host $http_host; proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; }} }}";
+        var config = ApplicationRoute.Create(projectId, ComposeDefinition.ContainerName(projectId, snapshot.ComposeService),
+            snapshot.ContainerPort, await VerifiedDomains(db, projectId, ct));
         await File.WriteAllTextAsync(route + ".tmp", config, ct); File.Move(route + ".tmp", route, true);
         var proxy = configuration["ForgeDock:ProxyContainer"] ?? "forgedock-proxy";
         try

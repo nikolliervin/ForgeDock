@@ -11,6 +11,7 @@ public sealed class CustomDomain
     public CustomDomainState State { get; set; } = CustomDomainState.PendingDns;
     public bool VerificationRequested { get; set; } = true;
     public DateTimeOffset? DnsVerifiedAt { get; set; }
+    public bool CertificateTrusted { get; set; }
     public DateTimeOffset? CertificateExpiresAt { get; set; }
     public DateTimeOffset NextCheckAt { get; set; } = DateTimeOffset.UtcNow;
     public string? Error { get; set; }

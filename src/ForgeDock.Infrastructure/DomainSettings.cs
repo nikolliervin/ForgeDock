@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace ForgeDock.Infrastructure;
 
 public sealed record DomainSettings(bool Enabled, string Target, string[] Addresses, string Email,
-    string AcmeDirectory = "https://acme-v02.api.letsencrypt.org/directory", string EdgeContainer = "forgedock-edge")
+    string AcmeDirectory = "https://acme-v02.api.letsencrypt.org/directory", string EdgeContainer = "forgedock-edge", int HttpsPort = 8443, string BindAddress = "127.0.0.1")
 {
     public static DomainSettings From(Func<string, string?> get) => new(
         bool.TryParse(get("ForgeDock:Domains:Enabled"), out var enabled) && enabled,
@@ -14,7 +14,9 @@ public sealed record DomainSettings(bool Enabled, string Target, string[] Addres
         (get("ForgeDock:Domains:Addresses") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         (get("ForgeDock:Domains:Email") ?? "").Trim(),
         get("ForgeDock:Domains:AcmeDirectory") ?? "https://acme-v02.api.letsencrypt.org/directory",
-        get("ForgeDock:Domains:EdgeContainer") ?? "forgedock-edge");
+        get("ForgeDock:Domains:EdgeContainer") ?? "forgedock-edge",
+        int.TryParse(get("ForgeDock:Domains:HttpsPort"), out var port) ? port : 8443,
+        get("ForgeDock:Domains:BindAddress") ?? "127.0.0.1");
 
     public string? Validate()
     {
@@ -28,6 +30,8 @@ public sealed record DomainSettings(bool Enabled, string Target, string[] Addres
         if (!Uri.TryCreate(AcmeDirectory, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
             !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Fragment))
             return "The ACME directory must be an HTTPS URL.";
+        if (HttpsPort is < 1 or > 65535 || BindAddress is not ("127.0.0.1" or "0.0.0.0" or "::"))
+            return "Configure a valid HTTPS edge port and bind address.";
         if (!System.Text.RegularExpressions.Regex.IsMatch(EdgeContainer, @"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"))
             return "The edge container name is invalid.";
         return null;

@@ -5,6 +5,10 @@ set -a
 source .env
 set +a
 mkdir -p .runtime/routes .runtime/secrets
+cat > .runtime/routes/00-forgedock.conf <<'NGINX'
+map $http_x_forwarded_proto $forgedock_scheme { default $scheme; https https; }
+server { listen 80 default_server; server_name _; return 404; }
+NGINX
 if ! docker network inspect forgedock >/dev/null 2>&1; then
   docker network create --label io.forgedock.managed=true forgedock >/dev/null
 elif [[ $(docker network inspect -f '{{index .Labels "io.forgedock.managed"}}' forgedock) != true ]]; then

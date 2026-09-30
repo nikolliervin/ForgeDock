@@ -15,6 +15,7 @@ fi
 
 make init
 make infra
+make edge
 make railpack
 make migrate
 npm --prefix web ci
@@ -44,7 +45,7 @@ pids+=("$!")
 
 printf '\nStarting ForgeDock at http://127.0.0.1:5173\n'
 echo 'Sign in with ForgeDock__ApiToken from .env. Press Ctrl+C to stop the app.'
-echo 'PostgreSQL, nginx, and BuildKit stay running for the next launch.'
+echo 'Infrastructure containers stay running for the next launch.'
 
 status=0
 wait -n "${pids[@]}" || status=$?
