@@ -55,7 +55,7 @@ Enable **GitHub auto-deploy** in a project's Settings, then add its payload URL 
 
 - [Deployment notifications](docs/NOTIFICATIONS.md): encrypted Slack/Discord webhooks and existing SMTP, with durable retries and exact deployment log links.
 - [Database services](docs/DATABASE_SERVICES.md): private PostgreSQL, Redis, MySQL, SQL Server Express, and MongoDB with persistent volumes, and encrypted connection variables.
-- [Backups and restore](docs/BACKUPS.md): scheduled encrypted snapshots, retention, and confirmed dashboard restoration.
+- [Backups and restore](docs/BACKUPS.md): scheduled encrypted snapshots, S3-compatible off-host storage, retention, and confirmed local or remote restoration.
 - [PR preview environments](docs/PREVIEW_ENVIRONMENTS.md): isolated deployments and databases, unique URLs, and close-event cleanup.
 - [Resource controls](docs/RESOURCE_CONTROLS.md): snapshotted CPU/memory quotas and durable crash/pressure alerts.
 - [Project templates](docs/PROJECT_TEMPLATES.md): editable stack defaults and downloadable starter repositories.

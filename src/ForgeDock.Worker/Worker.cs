@@ -10,6 +10,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        using (var backupStore = CreateBackupStore()) { } // Fail fast for incomplete remote storage configuration.
         // A session lock prevents a second worker from recovering or executing the same queue.
         await using var owner = new NpgsqlConnection(configuration.GetConnectionString("ForgeDock"));
         await owner.OpenAsync(stoppingToken);

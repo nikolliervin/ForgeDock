@@ -10,7 +10,7 @@ test('database backups previews resource settings and notifications are availabl
       const body = request.postDataJSON(); writes.push({ path, body });
       if (path.endsWith('/databases')) databases = [{ id: dbid, kind: body.kind, state: 'Running', backupIntervalHours: 0 }];
       if (path.endsWith('/schedule')) databases = [{ id: dbid, kind: 'PostgreSql', state: 'Running', backupIntervalHours: body.intervalHours }];
-      if (path.endsWith('/backups')) jobs = [{ id: 'backup-one', serviceId: dbid, kind: 'Backup', state: 'Completed', createdAt: new Date().toISOString(), sizeBytes: 1024 }];
+      if (path.endsWith('/backups')) jobs = [{ id: 'backup-one', serviceId: dbid, kind: 'Backup', state: 'Completed', createdAt: new Date().toISOString(), sizeBytes: 1024, remoteState: 'Uploaded' }];
       if (path.endsWith('/previews')) previewsEnabled = body.enabled;
       return route.fulfill({ json: {} });
     }
@@ -23,6 +23,7 @@ test('database backups previews resource settings and notifications are availabl
   await page.getByRole('button', { name: 'Backups', exact: true }).click();
   await page.getByLabel('PostgreSql backup schedule').selectOption('24');
   await page.getByRole('button', { name: 'Back up now', exact: true }).click();
+  await expect(page.getByText('Remote storage: Uploaded', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Restore this backup', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('replaces current database data');
   await page.getByRole('button', { name: 'Restore database', exact: true }).click();
