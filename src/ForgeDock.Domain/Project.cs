@@ -4,6 +4,9 @@ public enum DeploymentMode { Dockerfile, Compose, Auto }
 
 public sealed class Project
 {
+    public string PreDeployCommand { get; set; } = "";
+    public string PostDeployCommand { get; set; } = "";
+    public int HookTimeoutSeconds { get; set; } = 120;
     public string? ApplicationName { get; set; }
     public string? EnvironmentName { get; set; }
     public double CpuLimit { get; set; } = 1;

@@ -5,6 +5,7 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<DeploymentHook> DeploymentHooks => Set<DeploymentHook>();
     public DbSet<StoragePolicy> StoragePolicies => Set<StoragePolicy>();
     public DbSet<StorageCleanup> StorageCleanups => Set<StorageCleanup>();
     public DbSet<ResourceAlert> ResourceAlerts => Set<ResourceAlert>();
@@ -26,6 +27,8 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<DeploymentHook>().HasOne<Deployment>().WithMany().HasForeignKey(h => h.DeploymentId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<DeploymentHook>().HasIndex(h => new { h.DeploymentId, h.StartedAt });
         model.Entity<Project>().HasIndex(p => new { p.ApplicationName, p.EnvironmentName }).IsUnique();
         model.Entity<Project>().Property(p => p.ApplicationName).HasMaxLength(50);
         model.Entity<Project>().Property(p => p.EnvironmentName).HasMaxLength(50);

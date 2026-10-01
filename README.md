@@ -57,6 +57,7 @@ Enable **GitHub auto-deploy** in a project's Settings, then add its payload URL 
 - [Database services](docs/DATABASE_SERVICES.md): private PostgreSQL, Redis, MySQL, SQL Server Express, and MongoDB with persistent volumes, and encrypted connection variables.
 - [Backups and restore](docs/BACKUPS.md): scheduled encrypted snapshots, S3-compatible off-host storage, retention, and confirmed local or remote restoration.
 - [PR preview environments](docs/PREVIEW_ENVIRONMENTS.md): isolated deployments and databases, unique URLs, and close-event cleanup.
+- [Deployment hooks](docs/DEPLOYMENT_HOOKS.md): timed before/after routing commands with recorded results and failure recovery.
 - [Environment promotion](docs/ENVIRONMENT_PROMOTION.md): staging/production groups and retained-image releases with independent runtime configuration.
 - [Storage cleanup](docs/STORAGE_CLEANUP.md): disk usage, deletion previews, and automatic artifact/log retention.
 - [Resource controls](docs/RESOURCE_CONTROLS.md): snapshotted CPU/memory quotas and durable crash/pressure alerts.

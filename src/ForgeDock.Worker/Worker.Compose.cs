@@ -64,8 +64,10 @@ public sealed partial class Worker
             await Stage(DeploymentState.HealthChecking);
             await WaitForComposeHttp(project.Id, snapshot, ct);
             deployment.ServiceStatusJson = JsonSerializer.Serialize(await ComposeEngine.StatusAsync(project.Id, ct));
+            await RunDeploymentHook(db, deployment, snapshot, "BeforeRoute", ct);
             await Stage(DeploymentState.Routing);
             await RouteCompose(db, project.Id, snapshot, ct);
+            await RunDeploymentHook(db, deployment, snapshot, "AfterRoute", ct);
             project.ActiveDeploymentId = deployment.Id; project.HealthStatus = "Running";
             await Stage(DeploymentState.Running);
             if (previous is not null)

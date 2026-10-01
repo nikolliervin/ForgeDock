@@ -20,6 +20,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         using (var scope = scopes.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
+            foreach (var hook in await db.DeploymentHooks.Where(h => h.State == "Running").ToListAsync(stoppingToken))
+            { hook.State = "Failed"; hook.Output = "Worker interrupted; inspect command side effects before retrying."; hook.FinishedAt = DateTimeOffset.UtcNow; }
             foreach (var cleanup in await db.StorageCleanups.Where(j => j.State == "Running").ToListAsync(stoppingToken))
             { cleanup.State = "Failed"; cleanup.Error = "Worker interrupted. Review storage preview before retrying."; cleanup.FinishedAt = DateTimeOffset.UtcNow; }
             foreach (var backup in await db.DatabaseBackups.Where(b => b.State == "Running").ToListAsync(stoppingToken))
@@ -293,6 +295,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             catch (InvalidOperationException) { await Task.Delay(2000, ct); }
         }
         if (!healthy) throw new InvalidOperationException("Application did not pass HTTP health checks within 60 seconds.");
+        await RunDeploymentHook(db, deployment, snapshot, "BeforeRoute", ct);
         await Stage(DeploymentState.Routing);
         var routes = Path.Combine(root, "routes");
         Directory.CreateDirectory(routes);
@@ -305,11 +308,14 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         {
             await Run("docker", "exec", proxy, "nginx", "-t");
             await Run("docker", "exec", proxy, "nginx", "-s", "reload");
+            await RunDeploymentHook(db, deployment, snapshot, "AfterRoute", ct);
         }
         catch
         {
             if (previous is null) File.Delete(route);
             else await File.WriteAllTextAsync(route, previous, CancellationToken.None);
+            await runner.RunAsync("docker", ["exec", proxy, "nginx", "-t"], null, _ => Task.CompletedTask, CancellationToken.None, inheritEnvironment: false);
+            await runner.RunAsync("docker", ["exec", proxy, "nginx", "-s", "reload"], null, _ => Task.CompletedTask, CancellationToken.None, inheritEnvironment: false);
             throw;
         }
         var oldId = project.ActiveDeploymentId;
