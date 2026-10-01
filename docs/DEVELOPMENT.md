@@ -49,7 +49,3 @@ FORGEDOCK_DOCKER_TESTS=1 bash scripts/with-env.sh dotnet test tests/ForgeDock.Te
 ```
 
 Run Docker integration suites sequentially because fixtures reload the shared local proxy. Browser fixture tests use intercepted API responses and need only the Vite server; live deployment tests require the API, worker, and local infrastructure.
-
-### Public documentation on Vercel
-
-Import the GitHub repository into Vercel with root directory `web`, framework Vite, build command `npm run build`, and output directory `dist`. The checked-in `web/vercel.json` redirects the hosted homepage to `/docs` and serves the SPA entry point for documentation deep links. Documentation does not require authentication or a running API. This deployment contains the frontend, not the backend deployment platform. Local dashboard startup continues to open at `/`.
