@@ -69,3 +69,7 @@ ForgeDock runs on one host and uses PostgreSQL as its durable queue. See [the ar
 This is a personal home-server project built for a trusted operator. It is intended for self-hosting and learning, with a shared management token rather than individual user accounts. It does not isolate hostile builds or provide a managed hosting service.
 
 Crash-time route reconciliation and stronger worker execution fencing remain areas for improvement. Read [the architecture review](docs/ARCHITECTURE_REVIEW.md) and [security notes](docs/SECURITY.md) before exposing an installation publicly.
+
+## License
+
+[MIT](LICENSE) © 2026 nikolliervin.
