@@ -2,6 +2,24 @@
 
 A single-host deployment platform for public HTTPS Git repositories and private GitHub repositories with automatic Railpack builds, Dockerfiles, or Docker Compose stacks. The .NET API stores projects and queued deployments in PostgreSQL; a Linux worker builds and starts Docker containers and switches nginx routes after HTTP health checks. React provides the management dashboard.
 
+## See it in action
+
+These short walkthroughs capture the actual ForgeDock interface with demo data and simulated API responses. Cleanup and promotion results are illustrative; recording them does not deploy applications or delete artifacts.
+
+**Storage cleanup** — Review disk usage, save retention rules, filter eligible artifacts, and confirm cleanup.
+
+![Storage cleanup: retention settings, artifact preview, confirmation, and completed history](docs/assets/storage-cleanup.gif)
+
+**Release promotion** — Select a tested staging release and promote its image into production with the destination runtime configuration.
+
+![Release promotion: staging release selection and production confirmation](docs/assets/release-promotion.gif)
+
+**Built-in documentation** — Search with Ctrl+K, open a guide, and copy example commands.
+
+![Documentation: searching for automatic builds and copying an example](docs/assets/documentation-search.gif)
+
+[Recording instructions](docs/README_RECORDINGS.md) explain how to regenerate these GIFs. Static instructions are available in the [storage cleanup](docs/STORAGE_CLEANUP.md), [environment promotion](docs/ENVIRONMENT_PROMOTION.md), and [automatic builds](docs/AUTOMATIC_BUILDS.md) guides.
+
 Run the local app with one command (requires the prerequisites in [development setup](docs/DEVELOPMENT.md)):
 
 ```bash
