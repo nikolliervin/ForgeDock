@@ -2,7 +2,7 @@
 
 Open **Storage** in the dashboard sidebar. Save the number of successful deployments to retain per project (1–100), source checkout retention (1–365 days), log retention (1–365 days), and orphan/deleted-preview grace period (1–365 days). Automatic daily cleanup is off by default. Apply the `StorageCleanup` migration and restart the API and worker.
 
-**Preview cleanup and disk usage** reports runtime file usage, filesystem capacity/free space, eligible image tags and source directories, and the number of old log entries. Image sizes share layers; this is an eligibility preview, not a promise of reclaimed bytes. Save policy changes before previewing.
+**Preview cleanup and disk usage** reports runtime file usage, filesystem capacity/free space, eligible image tags and source directories, and the number of old log entries. Image sizes share layers; this is an eligibility preview, not a promise of reclaimed bytes. The dashboard loads this preview automatically and provides artifact type filters and search. Refresh it to recheck eligibility. Unsaved policy changes disable cleanup; saving refreshes the preview using the new policy.
 
 **Run cleanup** requires dashboard confirmation and creates a durable queued job. The serial deployment worker recomputes eligibility at execution time. Daily automatic cleanup uses the same lifecycle. Interrupted jobs are failed on worker restart; preview current state before retrying, because filesystem and Docker deletion cannot be rolled back.
 
@@ -25,4 +25,4 @@ npm --prefix web run build
 npm --prefix web run test:e2e -- storage.spec.ts
 ```
 
-The browser check uses API fixtures to exercise policy editing, preview, required confirmation, and queued job display. Automatic scheduling uses the serial worker, so long deployments can delay cleanup.
+The browser check uses API fixtures to exercise policy editing, unsaved-change protection, automatic preview, artifact filters/search, required confirmation, queued job display, and mobile overflow. The redesigned dashboard was also visually checked at desktop and mobile sizes in light and dark themes. Automatic scheduling uses the serial worker, so long deployments can delay cleanup.
