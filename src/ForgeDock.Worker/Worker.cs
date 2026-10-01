@@ -20,6 +20,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
         using (var scope = scopes.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ForgeDockDbContext>();
+            foreach (var cleanup in await db.StorageCleanups.Where(j => j.State == "Running").ToListAsync(stoppingToken))
+            { cleanup.State = "Failed"; cleanup.Error = "Worker interrupted. Review storage preview before retrying."; cleanup.FinishedAt = DateTimeOffset.UtcNow; }
             foreach (var backup in await db.DatabaseBackups.Where(b => b.State == "Running").ToListAsync(stoppingToken))
             { backup.State = "Failed"; backup.Error = "Worker interrupted. Inspect the database and restart the app before retrying a restore."; backup.FinishedAt = DateTimeOffset.UtcNow; }
             var interrupted = await db.Deployments.Where(d => d.State != DeploymentState.Queued &&
@@ -53,6 +55,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             }
             await ProvisionDatabases(db, stoppingToken);
             await ProcessBackups(db, stoppingToken);
+            await ProcessStorageCleanup(db, stoppingToken);
             var operation = await db.Operations.OrderBy(o => o.CreatedAt).FirstOrDefaultAsync(o => o.State == ProjectOperationState.Queued, stoppingToken);
             if (operation is not null)
             {

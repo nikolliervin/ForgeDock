@@ -5,6 +5,8 @@ namespace ForgeDock.Infrastructure;
 
 public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> options) : DbContext(options)
 {
+    public DbSet<StoragePolicy> StoragePolicies => Set<StoragePolicy>();
+    public DbSet<StorageCleanup> StorageCleanups => Set<StorageCleanup>();
     public DbSet<ResourceAlert> ResourceAlerts => Set<ResourceAlert>();
     public DbSet<ResourceObservation> ResourceObservations => Set<ResourceObservation>();
     public DbSet<PreviewEnvironment> PreviewEnvironments => Set<PreviewEnvironment>();

@@ -31,6 +31,7 @@ if (!string.IsNullOrWhiteSpace(webRoot) && Directory.Exists(webRoot))
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
     app.MapGet("/docs/{**path}", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
+    app.MapGet("/storage", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
     app.MapGet("/projects/{**path}", () => Results.File(Path.Combine(Path.GetFullPath(webRoot), "index.html"), "text/html")).AllowAnonymous();
 }
 app.UseStatusCodePages();
@@ -49,6 +50,7 @@ api.MapWebhookEndpoints();
 api.MapNotificationEndpoints();
 api.MapDatabaseEndpoints();
 api.MapBackupEndpoints();
+api.MapStorageEndpoints();
 api.MapPreviewEndpoints();
 api.MapResourceEndpoints();
 api.MapTemplateEndpoints();
@@ -148,6 +150,8 @@ api.MapDelete("/deployments/{id:guid}", async (Guid id, ForgeDockDbContext db, C
 });
 api.MapPost("/deployments/{id:guid}/rollback", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
 {
+    await using var storageTransaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({StorageRuntime.LockId})", ct);
     var source = await db.Deployments.FindAsync([id], ct);
     if (source is null) return Results.NotFound();
     if (source.State is not (DeploymentState.Running or DeploymentState.Stopped) || source.ImageTag is null)
@@ -157,11 +161,13 @@ api.MapPost("/deployments/{id:guid}/rollback", async (Guid id, ForgeDockDbContex
     var deployment = new Deployment { ProjectId = source.ProjectId, RollbackSourceId = source.Id,
         ImageTag = source.ImageTag, CommitSha = source.CommitSha, CommitMessage = source.CommitMessage, CommitAuthor = source.CommitAuthor, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
     db.Deployments.Add(deployment);
-    await db.SaveChangesAsync(ct);
+    await db.SaveChangesAsync(ct); await storageTransaction.CommitAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
 api.MapPost("/projects/{id:guid}/restart", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
 {
+    await using var storageTransaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({StorageRuntime.LockId})", ct);
     var project = await db.Projects.FindAsync([id], ct);
     if (project?.ActiveDeploymentId is not { } active) return Results.Conflict(new { error = "Project has no retained active version to restart." });
     if (await db.Operations.AnyAsync(o => o.ProjectId == id && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
@@ -170,7 +176,7 @@ api.MapPost("/projects/{id:guid}/restart", async (Guid id, ForgeDockDbContext db
     if (source?.ImageTag is null) return Results.Conflict(new { error = "Active image is unavailable." });
     var deployment = new Deployment { ProjectId = id, RollbackSourceId = source.Id, ImageTag = source.ImageTag,
         CommitSha = source.CommitSha, CommitMessage = source.CommitMessage, CommitAuthor = source.CommitAuthor, ConfigurationJson = source.ConfigurationJson, ProtectedComposeManifest = source.ProtectedComposeManifest };
-    db.Deployments.Add(deployment); await db.SaveChangesAsync(ct);
+    db.Deployments.Add(deployment); await db.SaveChangesAsync(ct); await storageTransaction.CommitAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
 api.MapPost("/projects/{id:guid}/operations", async (Guid id, OperationRequest request, ForgeDockDbContext db, CancellationToken ct) =>
@@ -229,10 +235,10 @@ public record ProjectResponse(Guid Id, string Name, string RepositoryUrl, string
 }
 public record DeploymentResponse(Guid Id, Guid ProjectId, DeploymentState State, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, string? CommitSha, string? Error, Guid? RollbackSourceId, IReadOnlyList<ServiceStatus> Services,
-    string? CommitMessage, string? CommitAuthor, DeploymentState LastStage, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, string Trigger = "Manual")
+    string? CommitMessage, string? CommitAuthor, DeploymentState LastStage, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, string Trigger = "Manual", bool CanRollback = true)
 {
     public static DeploymentResponse From(Deployment d) => new(d.Id, d.ProjectId, d.State, d.CreatedAt,
         d.UpdatedAt, d.CommitSha, d.Error, d.RollbackSourceId,
         string.IsNullOrWhiteSpace(d.ServiceStatusJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<ServiceStatus>>(d.ServiceStatusJson) ?? [],
-        d.CommitMessage, d.CommitAuthor, d.LastStage, d.StartedAt, d.FinishedAt, d.Trigger);
+        d.CommitMessage, d.CommitAuthor, d.LastStage, d.StartedAt, d.FinishedAt, d.Trigger, d.ImageTag != null && d.State is DeploymentState.Running or DeploymentState.Stopped);
 }

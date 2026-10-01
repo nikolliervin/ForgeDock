@@ -14,7 +14,7 @@ Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption
 
 - Crash-time nginx/database reconciliation and stronger execution fencing/concurrent lifecycle locking are not complete.
 - Application monitoring/log collection shares the serial deployment worker and pauses during builds.
-- Source/image/log retention and cleanup automation are absent; deleting a project removes its containers, route, and DB history but retains images/source directories.
+- Storage cleanup now covers deployment images, source checkouts, logs, and orphan preview artifacts. Persistent volumes and build caches require separate operator cleanup.
 - Single trusted operator only; private GitHub access uses a shared worker token; no hostile-tenant build isolation, production service packaging, or metrics/exporter stack.
 - Git hostname checks do not fully address DNS rebinding/private-address resolution; restrict worker egress for untrusted inputs.
 
@@ -53,3 +53,7 @@ See [project services verification](PLATFORM_FEATURES_VERIFICATION.md) for curre
 New managed database snapshots can upload encrypted archives to a configured private S3-compatible bucket. Remote locations and retry status are persisted; failed uploads preserve local files and retry. Count-based retention removes remote objects, optionally evicts uploaded local copies, and protects upload failures and queued/running restore sources. Dashboard restoration downloads remote-only archives and authenticates them before database replacement. Store credentials stay in worker configuration and are removed from child-process environments.
 
 See [backup setup and limitations](BACKUPS.md) and [verification](OFF_HOST_BACKUPS_VERIFICATION.md). Existing local snapshots are not backfilled; remote discovery/import and bucket migration are not implemented.
+
+## Storage cleanup
+
+Platform-wide retention settings, disk usage and deletion previews, durable manual/daily cleanup jobs, and rollback availability are implemented. Active/latest/pending image references and build sources are protected; backups and volumes are preserved. See [storage cleanup](STORAGE_CLEANUP.md) for setup, verification, and limits.
