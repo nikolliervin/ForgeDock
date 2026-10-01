@@ -14,7 +14,7 @@ test('console targets the selected project and renders output, failures and hist
     }
     return route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : path === '/api/projects' ? [{ id, name: 'Console app', repositoryUrl: 'https://github.com/example/app', branch: 'main', activeDeploymentId: 'active', healthStatus: 'Running', deploymentMode: 'Auto' }] : [] });
   });
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill('test-console-token');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Console app', exact: true }).click();

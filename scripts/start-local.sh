@@ -43,7 +43,7 @@ pids+=("$!")
 setsid npm --prefix web run dev &
 pids+=("$!")
 
-printf '\nStarting ForgeDock at http://127.0.0.1:5173\n'
+printf '\nStarting ForgeDock at http://127.0.0.1:5173/dashboard\n'
 echo 'Sign in with ForgeDock__ApiToken from .env. Press Ctrl+C to stop the app.'
 echo 'Infrastructure containers stay running for the next launch.'
 

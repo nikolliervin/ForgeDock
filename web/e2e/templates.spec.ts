@@ -11,7 +11,7 @@ test('templates fill editable defaults preserve repository details and download 
       { ...defaults, id: 'compose', name: 'Node.js + Redis stack', description: 'Compose starter', containerPort: 8080, deploymentMode: 'Compose', composeService: 'web' }
     ] : path === '/api/session' ? { name: 'operator' } : [] });
   });
-  await page.goto('/'); await page.getByLabel('Management token').fill('template-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/dashboard'); await page.getByLabel('Management token').fill('template-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Project name', { exact: true }).fill('My starter'); await page.getByLabel('Repository URL', { exact: true }).fill('https://github.com/example/starter');
   await page.getByLabel('Branch', { exact: true }).fill('master');

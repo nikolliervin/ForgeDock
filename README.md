@@ -6,7 +6,7 @@ ForgeDock is a hobby project I built to manage applications and Docker container
 
 Connect a Git repository, configure your app, and deploy it from the dashboard. ForgeDock builds the image, starts the containers, checks their health, and updates nginx routing when the release is ready.
 
-[GIF walkthroughs](docs/SHOWCASE.md) · [Getting started](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
+[Live documentation](https://docs-forgedock.vercel.app/docs) · [GIF walkthroughs](docs/SHOWCASE.md) · [Getting started](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ![ForgeDock dashboard showing deployment progress and logs](docs/assets/deploy-and-logs.gif)
 
@@ -37,8 +37,8 @@ cd ForgeDock
 
 The launcher prepares the local environment, starts PostgreSQL, nginx, and BuildKit, applies migrations, and starts the API, worker, and dashboard. It preserves an existing `.env`.
 
-- **Dashboard:** <http://127.0.0.1:5173>
-- **Documentation:** <http://127.0.0.1:5173/docs> — no sign-in required
+- **Dashboard:** <http://127.0.0.1:5173/dashboard>
+- **Documentation:** <http://127.0.0.1:5173> (also available at `/docs`) — no sign-in required
 - **Sign-in:** use `ForgeDock__ApiToken` from your private `.env`
 
 Press Ctrl+C to stop the application services. Infrastructure containers remain running. After backend updates, rerun the launcher to apply migrations and restart the services.

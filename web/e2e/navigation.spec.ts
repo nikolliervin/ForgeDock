@@ -6,7 +6,7 @@ test('documentation lives outside the project list and aligns its brand icon', a
     const path = new URL(route.request().url()).pathname;
     await route.fulfill({ json: path === '/api/projects' ? [project] : path === '/api/session' ? { name: 'operator' } : [] });
   });
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill('test-management-token');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Projects', exact: true })).toBeVisible();

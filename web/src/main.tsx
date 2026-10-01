@@ -88,7 +88,7 @@ function App({ pathname }: { pathname: string }) {
     setSelected(id);
     setCreating(false);
     setTab(section);
-    goTo(id ? `/projects/${id}/${section}` : '/');
+    goTo(id ? `/projects/${id}/${section}` : '/dashboard');
   }
   function changeTab(section: Tab) {
     if (selected) openProject(selected, section);
@@ -544,7 +544,7 @@ function App({ pathname }: { pathname: string }) {
       <main>
         <header>
           <nav className="breadcrumbs" aria-label="Breadcrumb">
-            <a href="/" onClick={(event) => navigate(event, '/')}>
+            <a href="/dashboard" onClick={(event) => navigate(event, '/dashboard')}>
               Projects
             </a>
             {pathname === '/storage' && (
@@ -941,12 +941,12 @@ function Root() {
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }, []);
-  const docs = pathname === '/docs' || pathname.startsWith('/docs/');
+  const docs = pathname === '/' || pathname === '/docs' || pathname.startsWith('/docs/');
 
   return (
     <>
       <div hidden={docs}>
-        <App pathname={pathname} />
+        <App pathname={pathname === '/' ? '/docs' : pathname} />
       </div>
       {docs && (
         <Suspense fallback={<Skeleton label="Loading documentation…" />}>

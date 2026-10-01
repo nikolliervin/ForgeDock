@@ -14,7 +14,7 @@ test('root directory persists through creation and settings and variables explai
     }
     return route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : path === '/api/projects' ? (project ? [project] : []) : [] });
   });
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill('test-build-settings-token');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'New project', exact: true }).click();

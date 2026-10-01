@@ -14,7 +14,7 @@ npm --prefix web ci
 
 `make init` generates a private `.env` with local credentials; it preserves an existing file. Keep the connection string quoted because it contains semicolons. Environment files are sourced as trusted shell configuration by the helper scripts. Do not source untrusted environment files.
 
-In three separate terminals run `make api`, `make worker`, and `make web`. Open http://127.0.0.1:5173. Read `ForgeDock__ApiToken` from `.env` locally to sign in; do not share it. API port is 5080, application proxy port is 8088, PostgreSQL port is 5432. All host ports bind to loopback. The scripts use Docker CLI and do not require Compose.
+In three separate terminals run `make api`, `make worker`, and `make web`. Open http://127.0.0.1:5173/dashboard. The homepage and `/docs` open public documentation. Read `ForgeDock__ApiToken` from `.env` locally to sign in; do not share it. API port is 5080, application proxy port is 8088, PostgreSQL port is 5432. All host ports bind to loopback. The scripts use Docker CLI and do not require Compose.
 
 For a public representative demo, create a project with repository `https://github.com/docker/welcome-to-docker.git`, branch `main`, Dockerfile `Dockerfile`, port `3000`, and health path `/`. Deploy and open the application link after it reaches Running. The repository is third-party content and may change. The local fixture in `examples/demo` uses port 8080 and `/health`; publish it to a public HTTPS Git repository to exercise the complete Git workflow.
 

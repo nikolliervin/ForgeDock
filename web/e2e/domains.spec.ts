@@ -21,7 +21,7 @@ async function setup(page: Page, ready = true) {
     if (method === 'DELETE') { domains = []; await route.fulfill({ status: 202, json: {} }); return; }
     await route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : path === '/api/projects' ? [project] : path === '/api/hosting' ? { enabled: ready, ready, target: 'deploy.example.com', addresses: ['203.0.113.10'], setupMessage: ready ? null : 'Custom domains are disabled.', stagingCertificates: false } : path.endsWith('/domains') ? domains : [] });
   });
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill('test-token');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('navigation', { name: 'Projects', exact: true }).getByRole('button', { name: 'Domain demo' }).click();

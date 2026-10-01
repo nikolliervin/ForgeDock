@@ -9,7 +9,7 @@ async function setup(page: Page, projectCount = 1) {
     if (route.request().method() === 'POST' && path !== '/api/session') { mutations.push({ path, body: route.request().postDataJSON() }); return route.fulfill({ json: { ...deployment, id: '00000000-0000-0000-0000-000000000012', state: 'Queued', error: null } }); }
     return route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : path === '/api/projects' ? [project, ...Array.from({ length: projectCount - 1 }, (_, i) => ({ ...project, id: String(i), name: `Additional project ${i}` }))] : path.endsWith('/deployments') ? [deployment] : path.endsWith('/logs') ? new URL(route.request().url()).searchParams.get('after') === '0' ? lines : [] : [] });
   });
-  await page.goto('/'); await page.getByLabel('Management token').fill('polish-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/dashboard'); await page.getByLabel('Management token').fill('polish-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('navigation', { name: 'Projects', exact: true }).getByRole('button', { name: 'CC', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Health check failed' })).toBeVisible();
   return mutations;

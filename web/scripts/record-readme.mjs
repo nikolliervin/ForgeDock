@@ -74,7 +74,7 @@ async function record(name, path, steps, authenticate = true, fixture) {
 }
 try {
   const setup = coreDemo('create');
-  await record('project-setup', '/', async (page, shot, click) => {
+  await record('project-setup', '/dashboard', async (page, shot, click) => {
     await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
     await shot('Start with a Git repository');
     await click(page.getByRole('button', { name: 'New project', exact: true }));

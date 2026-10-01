@@ -13,7 +13,7 @@ test('individual variables and protected bulk imports work without revealing sav
     if (path.endsWith('/environment/NEW_VAR') && method === 'PUT') { expect(route.request().postDataJSON().value).toBe('individual-secret'); names.push('NEW_VAR'); return route.fulfill({ status: 204 }); }
     return route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : path === '/api/projects' ? [project] : path.endsWith('/environment') ? names : [] });
   });
-  await page.goto('/'); await page.getByLabel('Management token').fill('test-env-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/dashboard'); await page.getByLabel('Management token').fill('test-env-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('navigation', { name: 'Projects', exact: true }).getByRole('button', { name: 'Environment demo' }).click();
   await page.getByRole('button', { name: 'Environment', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('NEW_VAR'); await page.getByLabel('Value', { exact: true }).fill('individual-secret'); await page.getByRole('button', { name: 'Save variable', exact: true }).click();

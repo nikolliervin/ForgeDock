@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('operator creates, configures, deploys and inspects a real service', async ({ page }) => {
   const token = process.env.ForgeDock__ApiToken;
   if (!token) throw new Error('Run through scripts/with-env.sh to load the management token.');
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill(token);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
@@ -55,7 +55,7 @@ test('dashboard remains usable on a narrow viewport', async ({ page }) => {
   const token = process.env.ForgeDock__ApiToken;
   if (!token) throw new Error('Load the management token with scripts/with-env.sh.');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill(token);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Docker welcome demo', exact: true }).click();
@@ -67,7 +67,7 @@ test('dashboard remains usable on a narrow viewport', async ({ page }) => {
 test('Compose WordPress opens its installer through the public route', async ({ page }) => {
   const token = process.env.ForgeDock__ApiToken;
   if (!token) throw new Error('Load the management token with scripts/with-env.sh.');
-  await page.goto('/');
+  await page.goto('/dashboard');
   await page.getByLabel('Management token').fill(token);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Compose WordPress demo', exact: true }).click();

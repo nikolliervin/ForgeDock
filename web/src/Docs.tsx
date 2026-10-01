@@ -228,9 +228,12 @@ const articles: Article[] = [
         content: (
           <>
             <p>
-              Visit <a href="http://127.0.0.1:5173">http://127.0.0.1:5173</a>. Open your local{' '}
-              <code>.env</code> file and use the <code>ForgeDock__ApiToken</code> value as your
-              management token.
+              Visit{' '}
+              <a href="/dashboard" onClick={(event) => navigate(event, '/dashboard')}>
+                the dashboard
+              </a>
+              . Open your local <code>.env</code> file and use the <code>ForgeDock__ApiToken</code>{' '}
+              value as your management token.
             </p>
             <p>
               The token stays in browser memory for the current session. Documentation is available
@@ -1626,7 +1629,11 @@ export function Docs() {
             </div>
           )}
         </div>
-        <a className="docs-dashboard" href="/" onClick={(event) => navigate(event, '/')}>
+        <a
+          className="docs-dashboard"
+          href="/dashboard"
+          onClick={(event) => navigate(event, '/dashboard')}
+        >
           Open dashboard <span aria-hidden="true">↗</span>
         </a>
         <button
@@ -1721,7 +1728,7 @@ export function Docs() {
               </article>
               <div className="docs-feedback">
                 <span>Ready for the next step?</span>
-                <a href="/" onClick={(event) => navigate(event, '/')}>
+                <a href="/dashboard" onClick={(event) => navigate(event, '/dashboard')}>
                   Open your workspace →
                 </a>
               </div>

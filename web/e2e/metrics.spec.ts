@@ -11,7 +11,7 @@ async function setup(page: Page, options: { stale?: boolean; empty?: boolean; er
     if (url.pathname.endsWith('/metrics')) { if (options.error) return route.fulfill({ status: 503, json: { error: 'Metrics temporarily unavailable' } }); return route.fulfill({ json: response(!options.stale, options.empty) }); }
     return route.fulfill({ json: url.pathname === '/api/session' ? { name: 'operator' } : url.pathname === '/api/projects' ? [project] : [] });
   });
-  await page.goto('/'); await page.getByLabel('Management token').fill('test-metrics-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/dashboard'); await page.getByLabel('Management token').fill('test-metrics-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Metrics demo' }).first().click(); await page.getByRole('button', { name: 'Metrics', exact: true }).click();
 }
 
