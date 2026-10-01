@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { coreDemo, projectId, previousId } from './readme-demo-data.mjs';
 const base = process.env.FORGEDOCK_DEMO_URL ?? 'http://127.0.0.1:5173';
 const root = resolve(import.meta.dirname, '../..');
 const output = resolve(root, 'docs/assets');
@@ -20,11 +21,12 @@ const artifacts = [
   { kind: 'Source', name: 'b628dc421aee47eb9d8ea018894b46ae', sizeBytes: 86 * 1024 ** 2, reason: 'Source retention elapsed' },
   { kind: 'Source', name: 'c829dc421aee47eb9d8ea018894b46ae', sizeBytes: 41 * 1024 ** 2, reason: 'Orphaned deployment or preview checkout' },
 ];
-async function newPage(path, authenticate = true) {
+async function newPage(path, authenticate = true, fixture) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1, reducedMotion: 'reduce', permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.route('**/api/**', async route => {
+    if (fixture) return fixture.route(route);
     const req = route.request(), path = new URL(req.url()).pathname;
     let json;
     if (req.method() !== 'GET') {
@@ -44,8 +46,8 @@ async function newPage(path, authenticate = true) {
   });
   return { page, context, errors };
 }
-async function record(name, path, steps, authenticate = true) {
-  const { page, context, errors } = await newPage(path, authenticate);
+async function record(name, path, steps, authenticate = true, fixture) {
+  const { page, context, errors } = await newPage(path, authenticate, fixture);
   const directory = resolve(work, name); await mkdir(directory, { recursive: true });
   const frames = []; let index = 0;
   async function shot(caption, duration = 1.8) {
@@ -71,6 +73,74 @@ async function record(name, path, steps, authenticate = true) {
   console.log(`${name}.gif: ${frames.length} captured steps`);
 }
 try {
+  const setup = coreDemo('create');
+  await record('project-setup', '/', async (page, shot, click) => {
+    await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
+    await shot('Start with a Git repository');
+    await click(page.getByRole('button', { name: 'New project', exact: true }));
+    await page.getByLabel('Project name').fill('Storefront');
+    await page.getByLabel('Repository URL').fill('https://github.com/example/storefront.git');
+    await shot('Connect your repository · choose a branch and build method', 2.4);
+    await click(page.locator('main').getByRole('button', { name: 'Create project', exact: true }));
+    await page.getByRole('heading', { name: 'Storefront', exact: true }).waitFor();
+    if (!setup.writes.some(w => w.path === '/api/projects' && w.body.deploymentMode === 'Auto')) throw Error('Project creation was not captured');
+    await shot('Project ready · Auto supports Railpack and Dockerfiles');
+    await click(page.getByRole('button', { name: 'Environment', exact: true }));
+    await page.getByLabel('Name', { exact: true }).fill('NODE_ENV');
+    await page.getByLabel('Value', { exact: true }).fill('production');
+    await shot('Add runtime configuration · values stay masked');
+    await click(page.getByRole('button', { name: 'Save variable', exact: true }));
+    await page.getByText('NODE_ENV', { exact: true }).waitFor();
+    if (await page.getByLabel('Value', { exact: true }).inputValue() !== '') throw Error('Saved value was not cleared');
+    await shot('Configuration saved · deploy to apply it', 2.4);
+  }, true, setup);
+  const deploy = coreDemo('deploy');
+  await record('deploy-and-logs', `/projects/${projectId}/deployments`, async (page, shot, click) => {
+    await page.getByRole('heading', { name: 'No deployments yet', exact: true }).waitFor();
+    await shot('Deploy the latest revision of your configured branch');
+    await click(page.getByRole('button', { name: 'Deploy', exact: true }));
+    await page.locator('.history .status').first().filter({ hasText: 'Queued' }).waitFor();
+    await shot('Follow the deployment timeline · queued to ready');
+    deploy.advance('Building');
+    await page.locator('.history .status').first().filter({ hasText: 'Building' }).waitFor();
+    await page.getByLabel('Deployment logs').getByText('npm run build completed', { exact: true }).waitFor();
+    await shot('Watch build output · Railpack builds the application', 2.4);
+    deploy.advance('HealthChecking');
+    await page.locator('.history .status').first().filter({ hasText: 'Health checking' }).waitFor();
+    await shot('Health checks pass before traffic changes');
+    deploy.advance('Running');
+    await page.locator('.history .status').first().filter({ hasText: 'Running' }).waitFor();
+    await page.getByLabel('Deployment logs').getByText('Storefront listening on port 8080', { exact: true }).waitFor();
+    await page.locator('.route small').filter({ hasText: 'Health: Running' }).waitFor();
+    await shot('Application ready · inspect runtime output', 2.2);
+    await click(page.getByRole('button', { name: 'Runtime', exact: true }));
+    await page.getByLabel('Search logs').fill('products');
+    await page.getByLabel('Deployment logs').getByText('GET /products → 200 OK', { exact: true }).waitFor();
+    if (await page.getByLabel('Deployment logs').textContent().then(s => s.includes('npm ci'))) throw Error('Log filter did not apply');
+    await shot('Filter logs by phase and text', 2.4);
+    const download = page.waitForEvent('download');
+    await click(page.getByRole('button', { name: 'Download', exact: true }));
+    if (!(await download).suggestedFilename().endsWith('.log')) throw Error('Log download failed');
+    await shot('Download the visible logs for troubleshooting');
+  }, true, deploy);
+  const rollback = coreDemo('rollback');
+  await record('deployment-rollback', `/projects/${projectId}/deployments`, async (page, shot, click) => {
+    await page.getByRole('heading', { name: 'Health check failed', exact: true }).waitFor();
+    await shot('Inspect a failed deployment · the previous version still serves traffic', 2.4);
+    await click(page.locator(`[data-deployment-id="${previousId}"] .history`));
+    await page.getByRole('button', { name: 'Roll back', exact: true }).waitFor();
+    await shot('Select a successful deployment with a retained image');
+    await click(page.getByRole('button', { name: 'Roll back', exact: true }));
+    await page.getByRole('dialog').waitFor();
+    await shot('Confirm rollback · restore its image and original environment', 2.4);
+    await click(page.getByRole('dialog').getByRole('button', { name: 'Roll back', exact: true }));
+    await page.locator('.history .status').first().filter({ hasText: 'Queued' }).waitFor();
+    await shot('Recovery queued · the image is reused without rebuilding');
+    rollback.advance('Running');
+    await page.locator('.history .status').first().filter({ hasText: 'Running' }).waitFor();
+    await page.getByLabel('Deployment logs').getByText('Storefront listening on port 8080', { exact: true }).waitFor();
+    await shot('Recovery complete · keep the full deployment history', 2.4);
+  }, true, rollback);
   await record('storage-cleanup', '/storage', async (page, shot, click) => {
     await page.getByText('1,248', { exact: true }).waitFor();
     await shot('Storage overview · disk usage and eligible artifacts');

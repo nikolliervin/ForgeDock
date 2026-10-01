@@ -4,21 +4,9 @@ A single-host deployment platform for public HTTPS Git repositories and private 
 
 ## See it in action
 
-These short walkthroughs capture the actual ForgeDock interface with demo data and simulated API responses. Cleanup and promotion results are illustrative; recording them does not deploy applications or delete artifacts.
+[**View the GIF walkthroughs →**](docs/SHOWCASE.md)
 
-**Storage cleanup** — Review disk usage, save retention rules, filter eligible artifacts, and confirm cleanup.
-
-![Storage cleanup: retention settings, artifact preview, confirmation, and completed history](docs/assets/storage-cleanup.gif)
-
-**Release promotion** — Select a tested staging release and promote its image into production with the destination runtime configuration.
-
-![Release promotion: staging release selection and production confirmation](docs/assets/release-promotion.gif)
-
-**Built-in documentation** — Search with Ctrl+K, open a guide, and copy example commands.
-
-![Documentation: searching for automatic builds and copying an example](docs/assets/documentation-search.gif)
-
-[Recording instructions](docs/README_RECORDINGS.md) explain how to regenerate these GIFs. Static instructions are available in the [storage cleanup](docs/STORAGE_CLEANUP.md), [environment promotion](docs/ENVIRONMENT_PROMOTION.md), and [automatic builds](docs/AUTOMATIC_BUILDS.md) guides.
+Follow the main workflow: connect a repository, configure environment variables, deploy with live logs, and recover a previous release. The visual guide also covers promotion, storage cleanup, and built-in documentation. Captures use the real interface with simulated demo responses.
 
 Run the local app with one command (requires the prerequisites in [development setup](docs/DEVELOPMENT.md)):
 
