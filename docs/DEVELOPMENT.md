@@ -34,3 +34,7 @@ Browser verification uses Playwright. Install its browser with `npm exec --prefi
 For Compose applications run `make compose` to install the checksum-verified official executable into the private runtime directory. `make docker-test` exercises real service builds, forced restart, changed-version rollback, persistent data, and secret file mounts. The WordPress browser check expects the retained `Compose WordPress demo` project.
 
 The retained employee browser check expects the employee-management Compose project and an initialized schema. Its repository must include an initial EF migration for fresh databases.
+
+### Worker private-file build fix
+
+The shared `PrivateFiles` helper is public so the worker can create scheduled-job environment files through Infrastructure. It uses exclusive file creation and owner-only read/write permissions on Unix. Verified with a solution build (zero warnings/errors) and the default test suite (191 passed, 15 integration tests skipped).

@@ -1,5 +1,5 @@
 namespace ForgeDock.Infrastructure;
-internal static class PrivateFiles
+public static class PrivateFiles
 {
     public static FileStream Create(string path)
     {
