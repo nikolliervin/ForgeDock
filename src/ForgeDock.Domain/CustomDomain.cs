@@ -1,6 +1,14 @@
 namespace ForgeDock.Domain;
 
-public enum CustomDomainState { PendingDns, AwaitingDeployment, Provisioning, Active, Error, Removing }
+public enum CustomDomainState
+{
+    PendingDns,
+    AwaitingDeployment,
+    Provisioning,
+    Active,
+    Error,
+    Removing,
+}
 
 public sealed class CustomDomain
 {

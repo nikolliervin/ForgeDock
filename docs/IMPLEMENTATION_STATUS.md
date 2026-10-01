@@ -6,13 +6,17 @@ Real authenticated UI/API project creation → public Git clone → Docker image
 
 The dashboard includes settings, encrypted write-only environment editing, deployment history/progress/logs, live health status, restart, confirmed stop, and confirmed project deletion. Built assets are served by the API at port 5080; Vite remains available at 5173 for development.
 
+## Current review
+
+Scheduled jobs and the backend/frontend architecture review are implemented. See [review details](ARCHITECTURE_REVIEW.md) and [scheduled jobs](SCHEDULED_JOBS.md). Verification figures in the sections below describe their historical feature checkpoints.
+
 ## Verification
 
 Backend/frontend builds pass. Thirty-two focused lifecycle/validation/encryption/process-execution tests pass. Four browser tests against the built frontend passed, including narrow-viewport layout and the workflow through login, project creation, secret editor, actual deployment, logs, routed response, stop, restart, deletion, and logout. EF migrations apply and the model has no pending changes. Anonymous API access is rejected, unsafe URLs are rejected, missing Dockerfile fails without replacing the active route, and encrypted variables reach Docker without appearing in persisted deployment logs. See MVP_VERIFICATION.md.
 
 ## Known limitations / remaining hardening
 
-- Crash-time nginx/database reconciliation and stronger execution fencing/concurrent lifecycle locking are not complete.
+- Crash-time nginx/database reconciliation and stronger execution fencing remain incomplete. Management lifecycle queues now use transaction advisory locking.
 - Application monitoring/log collection shares the serial deployment worker and pauses during builds.
 - Storage cleanup now covers deployment images, source checkouts, logs, and orphan preview artifacts. Persistent volumes and build caches require separate operator cleanup.
 - Single trusted operator only; private GitHub access uses a shared worker token; no hostile-tenant build isolation, production service packaging, or metrics/exporter stack.

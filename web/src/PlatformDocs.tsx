@@ -1,54 +1,647 @@
 import type { ComponentType } from 'react';
 import type { Article } from './Docs';
 import { navigate } from './navigation';
-function Guide({ slug, children }: { slug: string; children: string }) { return <a href={'/docs/' + slug} onClick={event => navigate(event, '/docs/' + slug)}>{children}</a>; }
-export function platformArticles(Code: ComponentType<{ children: string; language?: string }>): Article[] {
+function Guide({ slug, children }: { slug: string; children: string }) {
+  return (
+    <a href={'/docs/' + slug} onClick={(event) => navigate(event, '/docs/' + slug)}>
+      {children}
+    </a>
+  );
+}
+export function platformArticles(
+  Code: ComponentType<{ children: string; language?: string }>,
+): Article[] {
   return [
-    { slug: 'project-templates', title: 'Project templates', group: 'GETTING STARTED', summary: 'Start a common stack with editable defaults and downloadable starter code.', keywords: 'template starter scaffold node nextjs react vite python fastapi go aspnet dotnet redis zip', sections: [
-      { id: 'choose', title: 'Choose your stack', content: <><p>In <strong>New project → Project template</strong>, choose Node.js, Next.js, React/Vite, Python/FastAPI, Go, ASP.NET Core, or a Node/Redis Compose stack. Build method, commands, port, and health endpoint are filled in. Edit them to match your repository.</p><p>Switching templates preserves your project name, repository URL, and branch. Existing repositories are unchanged.</p></> },
-      { id: 'starter', title: 'Start a new repository', content: <><p>Click <strong>Download starter ZIP</strong>, extract it, then push its files into your own GitHub repository. For Node, Next.js, and Vite, run <code>npm install</code> and commit <code>package-lock.json</code> first.</p><Code>{'git init -b main\ngit add .\ngit commit -m "Start application"\ngit remote add origin https://github.com/YOU/YOUR-REPOSITORY.git\ngit push -u origin main'}</Code><p>Paste that HTTPS repository URL in ForgeDock. Starter health checks use <code>/health</code>. Template dependency ranges are starting defaults; keep your dependencies updated.</p></> },
-      { id: 'database', title: 'Add storage', content: <><p>The optional <strong>Managed database</strong> choice creates PostgreSQL, Redis, MySQL, SQL Server Express, or MongoDB together with the project and saves an encrypted connection variable. Wait for Running before deploying. Add your application's database client and migrations separately.</p><p>The Compose starter already has private persistent Redis. See <Guide slug="database-services">database services</Guide> for connection and storage behavior.</p></> }
-    ] },
-    { slug: 'database-services', title: 'Database services', group: 'BUILD & DEPLOY', summary: 'Run private PostgreSQL, Redis, MySQL, SQL Server Express, and MongoDB beside your app with persistent storage.', keywords: 'postgresql postgres redis mysql sqlserver mongodb managed database storage volume DATABASE_URL REDIS_URL connection', sections: [
-      { id: 'create', title: 'Create a database', content: <><p>Open <strong>Project → Databases</strong> and add PostgreSQL, Redis, MySQL, SQL Server Express, or MongoDB. Wait for Running, then deploy your app. PostgreSQL 17 uses database and user <code>app</code>; Redis 7.4 uses password authentication and append-only persistence. MySQL 8.4, SQL Server 2022 Express, and MongoDB 8.0 use an app database and scoped app user. SQL Server Express creation requires accepting the Microsoft license terms.</p><p>ForgeDock adds <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>MYSQL_URL</code>, <code>SQLSERVER_CONNECTION_STRING</code> (ADO.NET format), or <code>MONGODB_URL</code> to encrypted project environment variables. Existing variables with the same name must be removed first. Values are never returned by the API.</p></> },
-      { id: 'connect', title: 'Connect from your application', content: <><p>Read the saved connection variable with your database client. The worker attaches the app to the database's private project network. For Compose, the routed service joins that network. Database ports are not published on the host.</p><p>Each service has a persistent named Docker volume and defaults to one CPU and 512 MiB memory. SQL Server Express instead needs 2 GiB memory and an x86-64 host, and permits databases up to 10 GB. Use <strong>Start / retry</strong> after provisioning failure or a project stop.</p></> },
-      { id: 'data', title: 'Preserve your data', content: <><p>App redeployments and database container recreation retain data. Project deletion removes database containers but retains their volumes. Keep the control database and platform secret key safe: they hold connection credentials.</p><p>Use <Guide slug="backups">backups and restore</Guide> for managed service snapshots. Repository Compose databases remain managed by their Compose definition.</p></> }
-    ] },
-    { slug: 'preview-environments', title: 'Preview environments', group: 'BUILD & DEPLOY', summary: 'Deploy each pull request to an isolated project and temporary URL.', keywords: 'pull request PR preview temporary branch fork draft webhook url wildcard', sections: [
-      { id: 'setup', title: 'Enable pull request events', content: <><p>Enable GitHub auto-deploy in Settings, then <strong>Previews → Enable previews</strong>. Edit the repository's GitHub webhook, choose <strong>Let me select individual events</strong>, and select <strong>Pushes</strong> and <strong>Pull requests</strong>.</p><p>Open or update a non-draft PR targeting the project's configured branch. Existing PRs are discovered on the next eligible event. See <Guide slug="github-webhooks">the Cloudflare webhook guide</Guide> for local connectivity.</p></> },
-      { id: 'isolation', title: 'Keep preview data separate', content: <><p>Each PR gets an independent project, exact head revision, and app URL. Further updates reuse the URL. Closing or merging queues deletion of its route and containers. Drafts and forks are skipped.</p><p>Production environment variables are never copied. Managed parent databases become fresh preview databases. Open a preview project's Environment tab to add other configuration. Retained volumes, backups, images, and source folders need separate operator cleanup.</p></> },
-      { id: 'public', title: 'Give previews public URLs', content: <><p>Local previews use <code>http://&lt;preview-project-id&gt;.localhost:8088</code>. For public previews, configure <Guide slug="custom-domains">public HTTPS hosting</Guide>, point wildcard DNS at your host, then set:</p><Code language=".env">{'ForgeDock__PreviewBaseDomain=previews.example.com'}</Code><p>The trusted operator suffix creates <code>https://pr-&lt;number&gt;-&lt;parent-id&gt;.previews.example.com</code>. Individual certificates require public HTTP validation and are subject to CA rate limits. A webhook-only Cloudflare tunnel does not expose application preview URLs.</p></> }
-    ] },
-    { slug: 'notifications', title: 'Deployment notifications', group: 'OPERATE', summary: 'Send deployment results and log links through Slack, Discord, or SMTP.', keywords: 'notify email slack discord smtp webhook free notification success failure logs', sections: [
-      { id: 'channels', title: 'Connect a free channel', content: <><p>In <strong>Settings → Deployment notifications</strong>, choose successes, failures, or both. Paste a Slack incoming webhook or a Discord channel webhook URL. You can connect multiple channels.</p><p>For email, enter one recipient and configure the worker's existing or free SMTP service. ForgeDock requires no paid notification provider. Slack and Discord need no server configuration.</p></> },
-      { id: 'smtp', title: 'Configure email and log links', content: <><Code language=".env">{'ForgeDock__DashboardBaseUrl=http://localhost:5173\nForgeDock__Smtp__Host=smtp.example.com\nForgeDock__Smtp__Port=587\nForgeDock__Smtp__EnableSsl=true\nForgeDock__Smtp__From=deployments@example.com\nForgeDock__Smtp__Username=deployments@example.com\nForgeDock__Smtp__Password=replace_me'}</Code><p>Restart the worker after changing server configuration. DashboardBaseUrl must point to the dashboard, including for remote recipients. Log links identify the exact deployment and require dashboard sign-in.</p></> },
-      { id: 'delivery', title: 'Inspect delivery status', content: <><p>Webhook credentials are encrypted and never returned. Leave a webhook field empty to keep its value, or choose Disconnect to remove it. Recent deliveries appear below settings.</p><p>The worker retries failed delivery up to five times. Notifications never change deployment results. A process interruption after the provider accepts a message can produce a duplicate. Cancelled deployments do not notify.</p></> }
-    ] },
-    { slug: 'backups', title: 'Backups & restore', group: 'OPERATE', summary: 'Schedule encrypted database snapshots and restore them from your dashboard.', keywords: 'backup restore postgres redis mysql sqlserver mongodb schedule hourly daily weekly encryption retention snapshot', sections: [
-      { id: 'schedule', title: 'Back up a managed database', content: <><p>Open <strong>Project → Backups</strong>. Use <strong>Back up now</strong> or select an hourly, six-hourly, daily, or weekly schedule. PostgreSQL backups use custom pg_dump archives; Redis uses consistent RDB snapshots. MySQL dumps include tables, routines, events, and triggers. SQL Server uses native copy-only backups with checksums. MongoDB uses compressed archives including indexes and briefly pauses the app while backing up.</p><p>The worker persists jobs and schedules, catches up after downtime, and encrypts backup files with the platform secret key. Backups cover managed services, not repository Compose databases or the platform control database.</p></> },
-      { id: 'restore', title: 'Restore a snapshot', content: <><p>Choose a completed backup, click <strong>Restore this backup</strong>, and confirm. Current database data is replaced. The active app, or full Compose stack, stops temporarily and restarts afterward.</p><p>PostgreSQL validates into a staging database before swapping it into place. Redis validates its snapshot and rebuilds append-only persistence. MySQL validates an import into a temporary database; SQL Server verifies the backup; MongoDB runs a dry-run validation. Avoid MySQL schema changes and non-InnoDB writes during backup, and external MongoDB writes during backup. Those three create a recovery backup before replacement and attempt recovery if import fails; replacement is not atomic. If both restore and recovery fail, a temporary recovery file remains inside the database container; inspect it before removing that container. An interrupted restore is marked failed; inspect the database and restart or redeploy the app before retrying.</p></> },
-      { id: 'retention', title: 'Keep backups off the host', content: <><p>Files live in <code>.runtime/backups/*.fgbackup</code> with private permissions. The default retention is seven successful backups per service; change <code>ForgeDock__BackupRetentionCount</code> (1–100) to override.</p><p>Configure the worker's ForgeDock__BackupS3__Enabled, Endpoint, Region, Bucket, Prefix, AccessKey, and SecretKey settings to upload new encrypted backups automatically. The private bucket must already exist. The dashboard shows upload status; failed uploads preserve local files and retry every five minutes. ForgeDock__BackupLocalRetentionCount controls local copies after upload, including zero for remote-only storage. Restore downloads a missing local archive automatically from its recorded remote location. Preserve the control database and secret key separately; losing the key makes backups unreadable. Existing local backups are not uploaded retroactively. Restore needs free space for decrypted files and staging data.</p></> }
-    ] },
-    { slug: 'automatic-rollback', title: 'Automatic rollback', group: 'DEPLOY', summary: 'Observe new releases and recover after repeated failed checks.', keywords: 'automatic rollback recovery release monitor health failures window', sections: [
-      { id: 'policy', title: 'Choose a release observation policy', content: <><p>In <strong>Settings → Automatic rollback</strong>, enable future releases, choose a 1–60 minute window and 1–10 consecutive failed checks. Healthy checks reset the count. New builds and promotions with a prior active image start a watch; rollback and restart do not.</p></> },
-      { id: 'recovery', title: 'Recover a failing release', content: <><p>The worker queues one recovery using the prior runtime snapshot and retained image, protects that image from cleanup, and sends configured failure notifications. History shows Automatic rollback. Normal health checks still apply to recovery. Monitoring shares the serial worker and can be delayed by long builds.</p><p>Settings edits apply to future releases. Deliberate stops and expired windows do not trigger rollback. Database migrations and external side effects are not reverted.</p></> }
-    ] },
-    { slug: 'deployment-hooks', title: 'Deployment hooks', group: 'DEPLOY', summary: 'Run timed release commands and inspect their results.', keywords: 'hooks migration before after deploy command timeout', sections: [
-      { id: 'configure', title: 'Configure commands', content: <><p>In <strong>Settings → Deployment hooks</strong>, configure before/after routing commands and a 1–900 second timeout. Commands run in the healthy candidate app container with its user and runtime environment. Images need /bin/sh and timeout. Empty commands disable a phase. Use environment variables for credentials.</p></> },
-      { id: 'failure', title: 'Review results and failures', content: <><p>Settings shows recorded phase, exit code, deployment link, and bounded output with known runtime secrets redacted. Before-routing failures prevent release. After-routing failures restore the prior route or Compose stack, although traffic may briefly reach the candidate. Schema changes and external side effects cannot be undone. Rollback and restart skip hooks; promotion uses destination hooks.</p><p>Timeout TERM/KILL supervision depends on the image's timeout utility. Inspect detached processes and interrupted hook side effects before retrying.</p></> }
-    ] },
-    { slug: 'environment-promotion', title: 'Environment promotion', group: 'DEPLOY', summary: 'Group staging and production projects and release the same image.', keywords: 'staging production application group promote image release environment', sections: [
-      { id: 'group', title: 'Group environments', content: <><p>In each project's <strong>Releases</strong> tab, save the same application group and unique environment names, such as staging and production. Configure projects independently; grouping does not copy databases or runtime secrets. Leave both names empty to ungroup.</p></> },
-      { id: 'promote', title: 'Promote a retained image', content: <><p>In the destination environment, choose a successful retained release from another environment and confirm <strong>Promote release</strong>. Auto/Dockerfile apps with matching repositories reuse the same image without rebuilding. Destination runtime variables, ports, health checks, and quotas are snapshotted, and normal health checks precede routing changes.</p><p>Build-time values stay baked into the source image. Compose promotion and copying database contents are not supported. PR previews remain separate.</p></> }
-    ] },
-    { slug: 'storage-cleanup', title: 'Storage cleanup', group: 'OPERATE', summary: 'Preview disk usage and retain only the deployment artifacts you need.', keywords: 'storage disk cleanup prune retention source logs images preview orphan', sections: [
-      { id: 'policy', title: 'Choose retention', content: <><p>Open <strong>Storage</strong> in the sidebar. Choose how many successful deployments to retain per project and how many days to keep source checkouts, logs, and orphaned artifacts. Save your policy, then preview eligible artifacts and disk usage. Automatic daily cleanup is disabled by default.</p></> },
-      { id: 'cleanup', title: 'Run cleanup', content: <><p>Preview first, then choose <strong>Run cleanup</strong> and confirm. The worker rechecks eligibility and protects active deployments, queued rollback references, and running build sources. Pruned versions remain in deployment history but lose image rollback; redeploy rebuilds their revision.</p><p>Only ForgeDock deployment image tags and source directories are eligible. Stopped owned containers may be removed to release images. Backups, persistent volumes, build caches, unrelated images, and networks are preserved. Shared or in-use images can remain. Image sizes share layers, so the preview is not a guarantee of reclaimed disk space.</p></> }
-    ] },
-    { slug: 'resource-controls', title: 'Resource controls', group: 'OPERATE', summary: 'Limit app CPU and memory, then monitor crashes and sustained resource pressure.', keywords: 'resource cpu cores ram memory limits quota oom crash alert restart throttling', sections: [
-      { id: 'limits', title: 'Set runtime limits', content: <><p>In <strong>Settings → Resource controls</strong>, choose CPU cores (0.1–32) and memory (64–65536 MiB). Defaults are one CPU and 512 MiB. Deploy again to apply changes; rollback restores that version's limits.</p><p>For Compose, limits apply to the routed app service. Managed databases have separate fixed limits. Docker throttles CPU and enforces a hard memory ceiling, without extra swap allowance.</p></> },
-      { id: 'alerts', title: 'Detect unhealthy behavior', content: <><p>Apps restart up to five times after failures. The monitor records alerts for an observed out-of-memory exit, three crashes/restarts, or three recent samples at 90% of CPU or memory quota.</p><p>It checks every 30 seconds with a one-hour cooldown per deployment and incident type. Sampling can miss very short events. CPU usage is compared to configured cores; 180% Docker CPU on two cores means 90% of the quota.</p></> },
-      { id: 'notify', title: 'Receive external alerts', content: <><p>Configure <Guide slug="notifications">notification channels</Guide> to receive resource alerts with log links. Resource alerts operate independently of deployment success/failure choices and appear in Settings.</p><p>Disable monitoring with the checkbox if needed. Deliberately stopped deployments and restore pauses are skipped. Runtime limits do not constrain build workloads or reserve host capacity.</p></> }
-    ] }
+    {
+      slug: 'scheduled-jobs',
+      title: 'Scheduled jobs',
+      group: 'OPERATE',
+      summary: 'Run recurring or manual commands with your application image and environment.',
+      keywords: 'cron task schedule job maintenance command timeout history',
+      sections: [
+        {
+          id: 'configure',
+          title: 'Define a task',
+          content: (
+            <>
+              <p>
+                Open <strong>Project → Jobs</strong>. Enter a name, shell command, repeat interval,
+                and timeout. Zero minutes creates a manual task; recurring intervals range from 1 to
+                10080 minutes. Timeouts range from 1 to 900 seconds. Deploy the application before
+                running a task.
+              </p>
+              <p>
+                Pause recurring tasks or choose Run now. Missed intervals coalesce into one run;
+                each task permits one pending run.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'execution',
+          title: 'Inspect execution history',
+          content: (
+            <>
+              <p>
+                Runs use the active image and an encrypted environment snapshot captured at queue
+                time. Separate task containers join the application network but do not mount
+                application volumes. Commands must exist in the image and support its shell.
+              </p>
+              <p>
+                History shows state, final exit code, bounded output, and failure reason. Timeouts
+                fail visibly. Output is limited to 65536 characters and configured secrets are
+                redacted. Enable project failure notifications for failed runs. Interrupted work
+                fails during worker recovery and is not silently replayed.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'project-templates',
+      title: 'Project templates',
+      group: 'GETTING STARTED',
+      summary: 'Start a common stack with editable defaults and downloadable starter code.',
+      keywords:
+        'template starter scaffold node nextjs react vite python fastapi go aspnet dotnet redis zip',
+      sections: [
+        {
+          id: 'choose',
+          title: 'Choose your stack',
+          content: (
+            <>
+              <p>
+                In <strong>New project → Project template</strong>, choose Node.js, Next.js,
+                React/Vite, Python/FastAPI, Go, ASP.NET Core, or a Node/Redis Compose stack. Build
+                method, commands, port, and health endpoint are filled in. Edit them to match your
+                repository.
+              </p>
+              <p>
+                Switching templates preserves your project name, repository URL, and branch.
+                Existing repositories are unchanged.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'starter',
+          title: 'Start a new repository',
+          content: (
+            <>
+              <p>
+                Click <strong>Download starter ZIP</strong>, extract it, then push its files into
+                your own GitHub repository. For Node, Next.js, and Vite, run{' '}
+                <code>npm install</code> and commit <code>package-lock.json</code> first.
+              </p>
+              <Code>
+                {
+                  'git init -b main\ngit add .\ngit commit -m "Start application"\ngit remote add origin https://github.com/YOU/YOUR-REPOSITORY.git\ngit push -u origin main'
+                }
+              </Code>
+              <p>
+                Paste that HTTPS repository URL in ForgeDock. Starter health checks use{' '}
+                <code>/health</code>. Template dependency ranges are starting defaults; keep your
+                dependencies updated.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'database',
+          title: 'Add storage',
+          content: (
+            <>
+              <p>
+                The optional <strong>Managed database</strong> choice creates PostgreSQL, Redis,
+                MySQL, SQL Server Express, or MongoDB together with the project and saves an
+                encrypted connection variable. Wait for Running before deploying. Add your
+                application's database client and migrations separately.
+              </p>
+              <p>
+                The Compose starter already has private persistent Redis. See{' '}
+                <Guide slug="database-services">database services</Guide> for connection and storage
+                behavior.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'database-services',
+      title: 'Database services',
+      group: 'BUILD & DEPLOY',
+      summary:
+        'Run private PostgreSQL, Redis, MySQL, SQL Server Express, and MongoDB beside your app with persistent storage.',
+      keywords:
+        'postgresql postgres redis mysql sqlserver mongodb managed database storage volume DATABASE_URL REDIS_URL connection',
+      sections: [
+        {
+          id: 'create',
+          title: 'Create a database',
+          content: (
+            <>
+              <p>
+                Open <strong>Project → Databases</strong> and add PostgreSQL, Redis, MySQL, SQL
+                Server Express, or MongoDB. Wait for Running, then deploy your app. PostgreSQL 17
+                uses database and user <code>app</code>; Redis 7.4 uses password authentication and
+                append-only persistence. MySQL 8.4, SQL Server 2022 Express, and MongoDB 8.0 use an
+                app database and scoped app user. SQL Server Express creation requires accepting the
+                Microsoft license terms.
+              </p>
+              <p>
+                ForgeDock adds <code>DATABASE_URL</code>, <code>REDIS_URL</code>,{' '}
+                <code>MYSQL_URL</code>, <code>SQLSERVER_CONNECTION_STRING</code> (ADO.NET format),
+                or <code>MONGODB_URL</code> to encrypted project environment variables. Existing
+                variables with the same name must be removed first. Values are never returned by the
+                API.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'connect',
+          title: 'Connect from your application',
+          content: (
+            <>
+              <p>
+                Read the saved connection variable with your database client. The worker attaches
+                the app to the database's private project network. For Compose, the routed service
+                joins that network. Database ports are not published on the host.
+              </p>
+              <p>
+                Each service has a persistent named Docker volume and defaults to one CPU and 512
+                MiB memory. SQL Server Express instead needs 2 GiB memory and an x86-64 host, and
+                permits databases up to 10 GB. Use <strong>Start / retry</strong> after provisioning
+                failure or a project stop.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'data',
+          title: 'Preserve your data',
+          content: (
+            <>
+              <p>
+                App redeployments and database container recreation retain data. Project deletion
+                removes database containers but retains their volumes. Keep the control database and
+                platform secret key safe: they hold connection credentials.
+              </p>
+              <p>
+                Use <Guide slug="backups">backups and restore</Guide> for managed service snapshots.
+                Repository Compose databases remain managed by their Compose definition.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'preview-environments',
+      title: 'Preview environments',
+      group: 'BUILD & DEPLOY',
+      summary: 'Deploy each pull request to an isolated project and temporary URL.',
+      keywords: 'pull request PR preview temporary branch fork draft webhook url wildcard',
+      sections: [
+        {
+          id: 'setup',
+          title: 'Enable pull request events',
+          content: (
+            <>
+              <p>
+                Enable GitHub auto-deploy in Settings, then{' '}
+                <strong>Previews → Enable previews</strong>. Edit the repository's GitHub webhook,
+                choose <strong>Let me select individual events</strong>, and select{' '}
+                <strong>Pushes</strong> and <strong>Pull requests</strong>.
+              </p>
+              <p>
+                Open or update a non-draft PR targeting the project's configured branch. Existing
+                PRs are discovered on the next eligible event. See{' '}
+                <Guide slug="github-webhooks">the Cloudflare webhook guide</Guide> for local
+                connectivity.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'isolation',
+          title: 'Keep preview data separate',
+          content: (
+            <>
+              <p>
+                Each PR gets an independent project, exact head revision, and app URL. Further
+                updates reuse the URL. Closing or merging queues deletion of its route and
+                containers. Drafts and forks are skipped.
+              </p>
+              <p>
+                Production environment variables are never copied. Managed parent databases become
+                fresh preview databases. Open a preview project's Environment tab to add other
+                configuration. Retained volumes, backups, images, and source folders need separate
+                operator cleanup.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'public',
+          title: 'Give previews public URLs',
+          content: (
+            <>
+              <p>
+                Local previews use <code>http://&lt;preview-project-id&gt;.localhost:8088</code>.
+                For public previews, configure{' '}
+                <Guide slug="custom-domains">public HTTPS hosting</Guide>, point wildcard DNS at
+                your host, then set:
+              </p>
+              <Code language=".env">{'ForgeDock__PreviewBaseDomain=previews.example.com'}</Code>
+              <p>
+                The trusted operator suffix creates{' '}
+                <code>https://pr-&lt;number&gt;-&lt;parent-id&gt;.previews.example.com</code>.
+                Individual certificates require public HTTP validation and are subject to CA rate
+                limits. A webhook-only Cloudflare tunnel does not expose application preview URLs.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'notifications',
+      title: 'Deployment notifications',
+      group: 'OPERATE',
+      summary: 'Send deployment results and log links through Slack, Discord, or SMTP.',
+      keywords: 'notify email slack discord smtp webhook free notification success failure logs',
+      sections: [
+        {
+          id: 'channels',
+          title: 'Connect a free channel',
+          content: (
+            <>
+              <p>
+                In <strong>Settings → Deployment notifications</strong>, choose successes, failures,
+                or both. Paste a Slack incoming webhook or a Discord channel webhook URL. You can
+                connect multiple channels.
+              </p>
+              <p>
+                For email, enter one recipient and configure the worker's existing or free SMTP
+                service. ForgeDock requires no paid notification provider. Slack and Discord need no
+                server configuration.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'smtp',
+          title: 'Configure email and log links',
+          content: (
+            <>
+              <Code language=".env">
+                {
+                  'ForgeDock__DashboardBaseUrl=http://localhost:5173\nForgeDock__Smtp__Host=smtp.example.com\nForgeDock__Smtp__Port=587\nForgeDock__Smtp__EnableSsl=true\nForgeDock__Smtp__From=deployments@example.com\nForgeDock__Smtp__Username=deployments@example.com\nForgeDock__Smtp__Password=replace_me'
+                }
+              </Code>
+              <p>
+                Restart the worker after changing server configuration. DashboardBaseUrl must point
+                to the dashboard, including for remote recipients. Log links identify the exact
+                deployment and require dashboard sign-in.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'delivery',
+          title: 'Inspect delivery status',
+          content: (
+            <>
+              <p>
+                Webhook credentials are encrypted and never returned. Leave a webhook field empty to
+                keep its value, or choose Disconnect to remove it. Recent deliveries appear below
+                settings.
+              </p>
+              <p>
+                The worker retries failed delivery up to five times. Notifications never change
+                deployment results. A process interruption after the provider accepts a message can
+                produce a duplicate. Cancelled deployments do not notify.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'backups',
+      title: 'Backups & restore',
+      group: 'OPERATE',
+      summary: 'Schedule encrypted database snapshots and restore them from your dashboard.',
+      keywords:
+        'backup restore postgres redis mysql sqlserver mongodb schedule hourly daily weekly encryption retention snapshot',
+      sections: [
+        {
+          id: 'schedule',
+          title: 'Back up a managed database',
+          content: (
+            <>
+              <p>
+                Open <strong>Project → Backups</strong>. Use <strong>Back up now</strong> or select
+                an hourly, six-hourly, daily, or weekly schedule. PostgreSQL backups use custom
+                pg_dump archives; Redis uses consistent RDB snapshots. MySQL dumps include tables,
+                routines, events, and triggers. SQL Server uses native copy-only backups with
+                checksums. MongoDB uses compressed archives including indexes and briefly pauses the
+                app while backing up.
+              </p>
+              <p>
+                The worker persists jobs and schedules, catches up after downtime, and encrypts
+                backup files with the platform secret key. Backups cover managed services, not
+                repository Compose databases or the platform control database.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'restore',
+          title: 'Restore a snapshot',
+          content: (
+            <>
+              <p>
+                Choose a completed backup, click <strong>Restore this backup</strong>, and confirm.
+                Current database data is replaced. The active app, or full Compose stack, stops
+                temporarily and restarts afterward.
+              </p>
+              <p>
+                PostgreSQL validates into a staging database before swapping it into place. Redis
+                validates its snapshot and rebuilds append-only persistence. MySQL validates an
+                import into a temporary database; SQL Server verifies the backup; MongoDB runs a
+                dry-run validation. Avoid MySQL schema changes and non-InnoDB writes during backup,
+                and external MongoDB writes during backup. Those three create a recovery backup
+                before replacement and attempt recovery if import fails; replacement is not atomic.
+                If both restore and recovery fail, a temporary recovery file remains inside the
+                database container; inspect it before removing that container. An interrupted
+                restore is marked failed; inspect the database and restart or redeploy the app
+                before retrying.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'retention',
+          title: 'Keep backups off the host',
+          content: (
+            <>
+              <p>
+                Files live in <code>.runtime/backups/*.fgbackup</code> with private permissions. The
+                default retention is seven successful backups per service; change{' '}
+                <code>ForgeDock__BackupRetentionCount</code> (1–100) to override.
+              </p>
+              <p>
+                Configure the worker's ForgeDock__BackupS3__Enabled, Endpoint, Region, Bucket,
+                Prefix, AccessKey, and SecretKey settings to upload new encrypted backups
+                automatically. The private bucket must already exist. The dashboard shows upload
+                status; failed uploads preserve local files and retry every five minutes.
+                ForgeDock__BackupLocalRetentionCount controls local copies after upload, including
+                zero for remote-only storage. Restore downloads a missing local archive
+                automatically from its recorded remote location. Preserve the control database and
+                secret key separately; losing the key makes backups unreadable. Existing local
+                backups are not uploaded retroactively. Restore needs free space for decrypted files
+                and staging data.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'automatic-rollback',
+      title: 'Automatic rollback',
+      group: 'DEPLOY',
+      summary: 'Observe new releases and recover after repeated failed checks.',
+      keywords: 'automatic rollback recovery release monitor health failures window',
+      sections: [
+        {
+          id: 'policy',
+          title: 'Choose a release observation policy',
+          content: (
+            <>
+              <p>
+                In <strong>Settings → Automatic rollback</strong>, enable future releases, choose a
+                1–60 minute window and 1–10 consecutive failed checks. Healthy checks reset the
+                count. New builds and promotions with a prior active image start a watch; rollback
+                and restart do not.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'recovery',
+          title: 'Recover a failing release',
+          content: (
+            <>
+              <p>
+                The worker queues one recovery using the prior runtime snapshot and retained image,
+                protects that image from cleanup, and sends configured failure notifications.
+                History shows Automatic rollback. Normal health checks still apply to recovery.
+                Monitoring shares the serial worker and can be delayed by long builds.
+              </p>
+              <p>
+                Settings edits apply to future releases. Deliberate stops and expired windows do not
+                trigger rollback. Database migrations and external side effects are not reverted.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'deployment-hooks',
+      title: 'Deployment hooks',
+      group: 'DEPLOY',
+      summary: 'Run timed release commands and inspect their results.',
+      keywords: 'hooks migration before after deploy command timeout',
+      sections: [
+        {
+          id: 'configure',
+          title: 'Configure commands',
+          content: (
+            <>
+              <p>
+                In <strong>Settings → Deployment hooks</strong>, configure before/after routing
+                commands and a 1–900 second timeout. Commands run in the healthy candidate app
+                container with its user and runtime environment. Images need /bin/sh and timeout.
+                Empty commands disable a phase. Use environment variables for credentials.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'failure',
+          title: 'Review results and failures',
+          content: (
+            <>
+              <p>
+                Settings shows recorded phase, exit code, deployment link, and bounded output with
+                known runtime secrets redacted. Before-routing failures prevent release.
+                After-routing failures restore the prior route or Compose stack, although traffic
+                may briefly reach the candidate. Schema changes and external side effects cannot be
+                undone. Rollback and restart skip hooks; promotion uses destination hooks.
+              </p>
+              <p>
+                Timeout TERM/KILL supervision depends on the image's timeout utility. Inspect
+                detached processes and interrupted hook side effects before retrying.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'environment-promotion',
+      title: 'Environment promotion',
+      group: 'DEPLOY',
+      summary: 'Group staging and production projects and release the same image.',
+      keywords: 'staging production application group promote image release environment',
+      sections: [
+        {
+          id: 'group',
+          title: 'Group environments',
+          content: (
+            <>
+              <p>
+                In each project's <strong>Releases</strong> tab, save the same application group and
+                unique environment names, such as staging and production. Configure projects
+                independently; grouping does not copy databases or runtime secrets. Leave both names
+                empty to ungroup.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'promote',
+          title: 'Promote a retained image',
+          content: (
+            <>
+              <p>
+                In the destination environment, choose a successful retained release from another
+                environment and confirm <strong>Promote release</strong>. Auto/Dockerfile apps with
+                matching repositories reuse the same image without rebuilding. Destination runtime
+                variables, ports, health checks, and quotas are snapshotted, and normal health
+                checks precede routing changes.
+              </p>
+              <p>
+                Build-time values stay baked into the source image. Compose promotion and copying
+                database contents are not supported. PR previews remain separate.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'storage-cleanup',
+      title: 'Storage cleanup',
+      group: 'OPERATE',
+      summary: 'Preview disk usage and retain only the deployment artifacts you need.',
+      keywords: 'storage disk cleanup prune retention source logs images preview orphan',
+      sections: [
+        {
+          id: 'policy',
+          title: 'Choose retention',
+          content: (
+            <>
+              <p>
+                Open <strong>Storage</strong> in the sidebar. Choose how many successful deployments
+                to retain per project and how many days to keep source checkouts, logs, and orphaned
+                artifacts. Save your policy, then preview eligible artifacts and disk usage.
+                Automatic daily cleanup is disabled by default.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'cleanup',
+          title: 'Run cleanup',
+          content: (
+            <>
+              <p>
+                Preview first, then choose <strong>Run cleanup</strong> and confirm. The worker
+                rechecks eligibility and protects active deployments, queued rollback references,
+                and running build sources. Pruned versions remain in deployment history but lose
+                image rollback; redeploy rebuilds their revision.
+              </p>
+              <p>
+                Only ForgeDock deployment image tags and source directories are eligible. Stopped
+                owned containers may be removed to release images. Backups, persistent volumes,
+                build caches, unrelated images, and networks are preserved. Shared or in-use images
+                can remain. Image sizes share layers, so the preview is not a guarantee of reclaimed
+                disk space.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      slug: 'resource-controls',
+      title: 'Resource controls',
+      group: 'OPERATE',
+      summary: 'Limit app CPU and memory, then monitor crashes and sustained resource pressure.',
+      keywords: 'resource cpu cores ram memory limits quota oom crash alert restart throttling',
+      sections: [
+        {
+          id: 'limits',
+          title: 'Set runtime limits',
+          content: (
+            <>
+              <p>
+                In <strong>Settings → Resource controls</strong>, choose CPU cores (0.1–32) and
+                memory (64–65536 MiB). Defaults are one CPU and 512 MiB. Deploy again to apply
+                changes; rollback restores that version's limits.
+              </p>
+              <p>
+                For Compose, limits apply to the routed app service. Managed databases have separate
+                fixed limits. Docker throttles CPU and enforces a hard memory ceiling, without extra
+                swap allowance.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'alerts',
+          title: 'Detect unhealthy behavior',
+          content: (
+            <>
+              <p>
+                Apps restart up to five times after failures. The monitor records alerts for an
+                observed out-of-memory exit, three crashes/restarts, or three recent samples at 90%
+                of CPU or memory quota.
+              </p>
+              <p>
+                It checks every 30 seconds with a one-hour cooldown per deployment and incident
+                type. Sampling can miss very short events. CPU usage is compared to configured
+                cores; 180% Docker CPU on two cores means 90% of the quota.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'notify',
+          title: 'Receive external alerts',
+          content: (
+            <>
+              <p>
+                Configure <Guide slug="notifications">notification channels</Guide> to receive
+                resource alerts with log links. Resource alerts operate independently of deployment
+                success/failure choices and appear in Settings.
+              </p>
+              <p>
+                Disable monitoring with the checkbox if needed. Deliberately stopped deployments and
+                restore pauses are skipped. Runtime limits do not constrain build workloads or
+                reserve host capacity.
+              </p>
+            </>
+          ),
+        },
+      ],
+    },
   ];
 }

@@ -1,7 +1,19 @@
 namespace ForgeDock.Domain;
 
-public enum ProjectOperationKind { Stop, Delete }
-public enum ProjectOperationState { Queued, Running, Completed, Failed }
+public enum ProjectOperationKind
+{
+    Stop,
+    Delete,
+}
+
+public enum ProjectOperationState
+{
+    Queued,
+    Running,
+    Completed,
+    Failed,
+}
+
 public sealed class ProjectOperation
 {
     public Guid Id { get; set; } = Guid.NewGuid();

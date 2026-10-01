@@ -316,6 +316,72 @@ namespace ForgeDock.Infrastructure.Migrations
                     b.ToTable("DeploymentHooks");
                 });
 
+            modelBuilder.Entity("ForgeDock.Domain.JobRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Command")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContainerId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ExitCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageTag")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Output")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ScheduledJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SourceDeploymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Truncated")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduledJobId");
+
+                    b.HasIndex("ProjectId", "CreatedAt");
+
+                    b.ToTable("JobRuns");
+                });
+
             modelBuilder.Entity("ForgeDock.Domain.MetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -686,6 +752,47 @@ namespace ForgeDock.Infrastructure.Migrations
                     b.ToTable("ResourceObservations");
                 });
 
+            modelBuilder.Entity("ForgeDock.Domain.ScheduledJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Command")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("NextRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextRunAt");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ScheduledJobs");
+                });
+
             modelBuilder.Entity("ForgeDock.Domain.StorageCleanup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -886,6 +993,20 @@ namespace ForgeDock.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ForgeDock.Domain.JobRun", b =>
+                {
+                    b.HasOne("ForgeDock.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ForgeDock.Domain.ScheduledJob", null)
+                        .WithMany()
+                        .HasForeignKey("ScheduledJobId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("ForgeDock.Domain.MetricSample", b =>
                 {
                     b.HasOne("ForgeDock.Domain.Project", null)
@@ -932,6 +1053,15 @@ namespace ForgeDock.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("ForgeDock.Domain.ResourceObservation", b =>
+                {
+                    b.HasOne("ForgeDock.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ForgeDock.Domain.ScheduledJob", b =>
                 {
                     b.HasOne("ForgeDock.Domain.Project", null)
                         .WithMany()

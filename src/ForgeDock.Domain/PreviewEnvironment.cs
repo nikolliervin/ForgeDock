@@ -1,4 +1,5 @@
 namespace ForgeDock.Domain;
+
 public sealed class PreviewEnvironment
 {
     public Guid ParentProjectId { get; set; }

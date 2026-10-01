@@ -6,12 +6,32 @@ namespace ForgeDock.Infrastructure;
 public sealed class SecretProtector
 {
     private readonly byte[] key;
+
+    /// <summary>
+    /// Requires an operator-supplied base64 AES-256 key shared by API and worker; losing the key makes
+    /// stored configuration and backups unrecoverable.
+    /// </summary>
     public SecretProtector(string encodedKey)
     {
-        try { key = Convert.FromBase64String(encodedKey); }
-        catch (FormatException) { throw new InvalidOperationException("ForgeDock__SecretKey must be a base64-encoded 32-byte key."); }
-        if (key.Length != 32) throw new InvalidOperationException("ForgeDock__SecretKey must encode exactly 32 bytes.");
+        try
+        {
+            key = Convert.FromBase64String(encodedKey);
+        }
+        catch (FormatException)
+        {
+            throw new InvalidOperationException(
+                "ForgeDock__SecretKey must be a base64-encoded 32-byte key."
+            );
+        }
+        if (key.Length != 32)
+            throw new InvalidOperationException(
+                "ForgeDock__SecretKey must encode exactly 32 bytes."
+            );
     }
+
+    /// <summary>
+    /// Encrypts UTF-8 values with a fresh AES-GCM nonce and returns nonce, tag, and ciphertext as base64.
+    /// </summary>
     public string Protect(string value)
     {
         var nonce = RandomNumberGenerator.GetBytes(12);
@@ -22,10 +42,16 @@ public sealed class SecretProtector
         cipher.Encrypt(nonce, plaintext, ciphertext, tag);
         return Convert.ToBase64String(nonce.Concat(tag).Concat(ciphertext).ToArray());
     }
+
+    /// <summary>
+    /// Authenticates the stored AES-GCM envelope before returning plaintext; malformed or tampered values
+    /// fail closed.
+    /// </summary>
     public string Unprotect(string value)
     {
         var bytes = Convert.FromBase64String(value);
-        if (bytes.Length < 28) throw new CryptographicException("Invalid encrypted secret.");
+        if (bytes.Length < 28)
+            throw new CryptographicException("Invalid encrypted secret.");
         var plaintext = new byte[bytes.Length - 28];
         using var cipher = new AesGcm(key, 16);
         cipher.Decrypt(bytes.AsSpan(0, 12), bytes.AsSpan(28), bytes.AsSpan(12, 16), plaintext);

@@ -4,7 +4,14 @@ import './docs.css';
 import { platformArticles } from './PlatformDocs';
 
 type Section = { id: string; title: string; content: ReactNode };
-export type Article = { slug: string; title: string; summary: string; group: string; keywords: string; sections: Section[] };
+export type Article = {
+  slug: string;
+  title: string;
+  summary: string;
+  group: string;
+  keywords: string;
+  sections: Section[];
+};
 
 function Code({ children, language = 'bash' }: { children: string; language?: string }) {
   const [copied, setCopied] = useState(false);
@@ -12,110 +19,1502 @@ function Code({ children, language = 'bash' }: { children: string; language?: st
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   async function copy() {
-    try { await navigator.clipboard.writeText(children); setCopied(true); setFailed(false); }
-    catch { setFailed(true); }
+    try {
+      await navigator.clipboard.writeText(children);
+      setCopied(true);
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => { setCopied(false); setFailed(false); }, 2000);
+    timer.current = setTimeout(() => {
+      setCopied(false);
+      setFailed(false);
+    }, 2000);
   }
-  return <div className="docs-code"><div><span>{language}</span><button onClick={() => void copy()} aria-label="Copy code">{copied ? 'Copied ✓' : failed ? 'Select to copy' : 'Copy'}</button><span className="docs-sr" role="status">{copied ? 'Code copied to clipboard.' : failed ? 'Copy failed. Select the code to copy it manually.' : ''}</span></div><pre><code>{children}</code></pre></div>;
+  return (
+    <div className="docs-code">
+      <div>
+        <span>{language}</span>
+        <button onClick={() => void copy()} aria-label="Copy code">
+          {copied ? 'Copied ✓' : failed ? 'Select to copy' : 'Copy'}
+        </button>
+        <span className="docs-sr" role="status">
+          {copied
+            ? 'Code copied to clipboard.'
+            : failed
+              ? 'Copy failed. Select the code to copy it manually.'
+              : ''}
+        </span>
+      </div>
+      <pre>
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
 }
 function Note({ children, title = 'Good to know' }: { children: ReactNode; title?: string }) {
-  return <div className="docs-note"><span aria-hidden="true">i</span><div><strong>{title}</strong><div>{children}</div></div></div>;
+  return (
+    <div className="docs-note">
+      <span aria-hidden="true">i</span>
+      <div>
+        <strong>{title}</strong>
+        <div>{children}</div>
+      </div>
+    </div>
+  );
 }
-function Link({ slug, children, className }: { slug: string; children: ReactNode; className?: string }) {
+function Link({
+  slug,
+  children,
+  className,
+}: {
+  slug: string;
+  children: ReactNode;
+  className?: string;
+}) {
   const href = '/docs' + (slug ? '/' + slug : '');
-  return <a href={href} className={className} aria-current={className === 'is-active' ? 'page' : undefined} onClick={event => navigate(event, href)}>{children}</a>;
+  return (
+    <a
+      href={href}
+      className={className}
+      aria-current={className === 'is-active' ? 'page' : undefined}
+      onClick={(event) => navigate(event, href)}
+    >
+      {children}
+    </a>
+  );
 }
 const articles: Article[] = [
-  { slug: '', title: 'Introduction', group: 'GETTING STARTED', summary: 'Your code. Your infrastructure. A clear path to production.', keywords: 'overview welcome platform architecture', sections: [
-    { id: 'overview', title: 'Meet your deployment control room', content: <><p>ForgeDock turns Git repositories into running applications on a Linux host you control. Connect a repository, choose how it builds, and follow every step from source to a healthy service.</p><div className="docs-flow"><span>01 <b>Connect</b><small>Public or private Git repository</small></span><i aria-hidden="true">→</i><span>02 <b>Build</b><small>Auto, Dockerfile, Compose</small></span><i aria-hidden="true">→</i><span>03 <b>Deploy</b><small>Health checks + routing</small></span></div></> },
-    { id: 'start-here', title: 'Start here', content: <div className="docs-cards"><Link slug="quickstart"><span className="docs-card-icon">↗</span><h3>Get up and running</h3><p>Start your workspace locally with a single command.</p><span>Quickstart <b>→</b></span></Link><Link slug="automatic-builds"><span className="docs-card-icon">◇</span><h3>Deploy without a Dockerfile</h3><p>Let Railpack detect your application and build its image.</p><span>Automatic builds <b>→</b></span></Link><Link slug="first-deployment"><span className="docs-card-icon">▤</span><h3>Ship your first service</h3><p>Connect a repository and take it through a deployment.</p><span>First deployment <b>→</b></span></Link></div> },
-    { id: 'how-it-works', title: 'Built around a simple workflow', content: <><p>The dashboard manages projects and deployment history. An API stores configuration in PostgreSQL, a worker builds and starts containers, and nginx sends traffic to your active application.</p><p>Single-application deployments switch traffic after HTTP health checks pass. If a new build fails, your existing route keeps serving its current version. Successful images are retained so you can restart or roll back.</p><Note title="A workspace you operate">This release is designed for one trusted operator on a single Linux host. Local routes use HTTP and bind to your machine. Custom domains and automatic HTTPS are available when you configure a public server. Private GitHub repositories use a server-configured access token. Team accounts are not included.</Note></> },
-  ]},
-  { slug: 'quickstart', title: 'Quickstart', group: 'GETTING STARTED', summary: 'Start your workspace and open the dashboard in minutes.', keywords: 'install setup run startup prerequisites linux node dotnet docker token', sections: [
-    { id: 'prerequisites', title: 'Before you begin', content: <><p>You need a Linux machine with the following tools installed:</p><ul><li>.NET 10 SDK</li><li>Node.js 22.12 or newer, and npm</li><li>Docker Engine, running and accessible to your user</li><li>Git, Bash, Make, OpenSSL, curl, tar, sha256sum, install, and setsid</li></ul><p>The automatic-build installer supports x86_64 and aarch64 hosts.</p></> },
-    { id: 'start-workspace', title: 'Start your workspace', content: <><p>From the repository directory, run:</p><Code>{"./scripts/start-local.sh"}</Code><p>The script creates your local configuration, starts PostgreSQL, nginx, and BuildKit, installs Railpack and frontend dependencies, applies database migrations, and launches the API, worker, and dashboard. Your existing <code>.env</code> is preserved.</p><Note title="First launch">The first run downloads dependencies and container images. Keep the terminal open while the workspace is running.</Note></> },
-    { id: 'sign-in', title: 'Open the dashboard', content: <><p>Visit <a href="http://127.0.0.1:5173">http://127.0.0.1:5173</a>. Open your local <code>.env</code> file and use the <code>ForgeDock__ApiToken</code> value as your management token.</p><p>The token stays in browser memory for the current session. Documentation is available without signing in.</p><Link slug="first-deployment" className="docs-inline-link">Continue to your first deployment →</Link></> },
-    { id: 'stop-workspace', title: 'Stop and start again', content: <><p>Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the startup terminal to stop the API, worker, and dashboard. Run the same script to start them again.</p><p>Infrastructure containers stay running. To stop those too:</p><Code>{"docker stop forgedock-proxy forgedock-postgres forgedock-buildkit"}</Code><p>Your database persists in the PostgreSQL volume. Keep your <code>.env</code> and secret key safe between launches.</p></> },
-  ]},
-  { slug: 'first-deployment', title: 'Your first deployment', group: 'GETTING STARTED', summary: 'Go from a repository URL to a running application.', keywords: 'project create git github private branch port health deploy route webhook auto deploy', sections: [
-    { id: 'auto-deploy', title: 'Deploy automatically from GitHub', content: <><p>Enable <strong>GitHub auto-deploy</strong> in Project Settings to deploy pushes to your configured branch. Use a Cloudflare Quick Tunnel to test from your local machine, or configure a permanent HTTPS endpoint on your server.</p><Link slug="github-webhooks" className="docs-inline-link">Set up GitHub webhooks with Cloudflare →</Link></> },
-    { id: 'private-github', title: 'Connect a private GitHub repository', content: <><p>Create a fine-grained GitHub personal access token for the repository owner, select the repositories to deploy, and grant <strong>Contents: Read-only</strong>. If your organization requires approval, wait for approval before deploying.</p><p>Set the token in the server's private <code>.env</code> and restart the worker:</p><Code language=".env">{"ForgeDock__GitHubToken=github_pat_your_token"}</Code><p>Enter the normal HTTPS repository URL, such as <code>https://github.com/owner/service.git</code>. The worker uses this token for cloning and fetching specific commits in Auto, Dockerfile, and Compose deployments. This is a shared server credential; rotate or replace it in the server configuration when it expires. Keep it out of project Environment variables.</p><p>SSH, GitHub Enterprise hosts, private submodules, and private package registries require separate support.</p></> },
-    { id: 'connect', title: '1. Connect your repository', content: <><p>In the dashboard, select <strong>New project</strong>. Give your application a name, enter its HTTPS Git URL, and choose a branch, such as <code>main</code>.</p><p>URLs must not contain credentials. Private GitHub repositories require the server token described above. SSH cloning is not supported.</p></> },
-    { id: 'configure', title: '2. Choose how it builds', content: <><p>Choose <strong>Auto</strong> for most single applications. ForgeDock uses your configured Dockerfile when present and otherwise builds with Railpack. Use <strong>Dockerfile</strong> to require a specific file, or <strong>Docker Compose</strong> for a multi-service stack.</p><p>Set <strong>Container port</strong> to the port your application listens on inside its container. Set an HTTP <strong>Health endpoint</strong> that responds successfully, such as <code>/</code> or <code>/health</code>.</p><Note title="Make it reachable">Your app must listen on <code>0.0.0.0</code>, rather than only localhost. Auto projects receive a runtime <code>PORT</code> matching the configured container port unless you explicitly save a different PORT variable.</Note></> },
-    { id: 'deploy', title: '3. Build and deploy', content: <><p>Create the project, then select <strong>Deploy</strong>. The deployment history shows progress through cloning, building, starting, health checking, and routing. Open the logs to see the selected builder and application output.</p><p>When the deployment reaches <strong>Running</strong>, open the application route at the top of the project page.</p><Code language="text">{"http://<project-id-without-hyphens>.localhost:8088"}</Code></> },
-    { id: 'next', title: 'What comes next', content: <><p>Save runtime variables in the <strong>Environment</strong> tab. Edit future deployment settings in <strong>Settings</strong>. To ship another version, push your changes to the repository and select <strong>Deploy</strong> again.</p><p>ForgeDock deploys on demand; Git push webhooks are not included.</p><Link slug="deployments" className="docs-inline-link">Learn about deployments and rollback →</Link></> },
-  ]},
-  { slug: 'github-webhooks', title: 'GitHub webhooks', group: 'BUILD & DEPLOY', summary: 'Connect GitHub to your local workspace with Cloudflare, then deploy on every push.', keywords: 'auto deploy autodeploy github webhook cloudflare tunnel trycloudflare secret payload url push branch master main private token', sections: [
-    { id: 'cloudflare', title: '1. Start ForgeDock and the Cloudflare tunnel', content: <><p>Start the workspace from the ForgeDock repository directory and keep its terminal open:</p><Code>{"bash scripts/start-local.sh"}</Code><p>In a second terminal on the same Linux host, run:</p><Code>{"docker run --rm --network host cloudflare/cloudflared:latest tunnel --url http://127.0.0.1:5080"}</Code><p>Copy the <code>https://...trycloudflare.com</code> address printed in the output. Keep this terminal open too. The tunnel points at the API on <strong>5080</strong>, not the dashboard or your deployed app.</p><Note title="Temporary public address">No Cloudflare account or domain is required. This command temporarily exposes the API service; management routes require your management token and webhooks verify their own secret. Stop the tunnel when finished. If restarting it gives a different hostname, update your GitHub webhook URL.</Note></> },
-    { id: 'payload-url', title: '2. Enable auto-deploy and copy the full URL', content: <><p>Open your project in ForgeDock and go to <strong>Settings → GitHub auto-deploy → Enable auto-deploy</strong>. Confirm your configured branch is the one you will push to: <code>master</code> and <code>main</code> are different.</p><p>Paste the Cloudflare HTTPS address into the editable <strong>Webhook payload URL</strong> field, then click outside it. ForgeDock adds your project's webhook path automatically. Copy the complete URL:</p><Code language="Payload URL">{"https://your-tunnel.trycloudflare.com/api/webhooks/github/<project-id>"}</Code><p>GitHub needs the full URL, including the project ID. The Cloudflare address alone is not enough. The edited URL is remembered in this browser; copy changes into GitHub yourself.</p></> },
-    { id: 'github-setup', title: '3. Add the webhook in GitHub', content: <><p>In your repository on GitHub, open <strong>Settings → Webhooks → Add webhook</strong>.</p><div className="docs-table-wrap"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Payload URL</td><td>The complete Cloudflare URL from ForgeDock</td></tr><tr><td>Content type</td><td><code>application/json</code></td></tr><tr><td>Secret</td><td>The webhook secret shown in ForgeDock</td></tr><tr><td>Events</td><td>Just the push event</td></tr><tr><td>SSL verification / Active</td><td>Enabled</td></tr></tbody></table></div><p>Click <strong>Add webhook</strong>. GitHub sends a connection check; within about 10 seconds, ForgeDock should show <strong>GitHub connection verified</strong>.</p><Note title="Finding the secret">The secret is shown when you first enable auto-deploy. If it is hidden, click Rotate webhook secret, confirm, and copy the new value into GitHub. Rotation immediately invalidates the old secret. Keep secrets out of URLs and source files.</Note></> },
-    { id: 'test-push', title: '4. Push a test commit', content: <><p>In the repository being deployed, make a change and push it to the configured branch. You can also create an empty test commit:</p><Code>{"git branch --show-current\ngit commit --allow-empty -m \"Test ForgeDock auto-deploy\"\ngit push"}</Code><p>Make sure the current branch matches ForgeDock before committing. The auto-deploy panel should show <strong>Deployment queued</strong>, and deployment history should show a new entry labeled <strong>GitHub push</strong>. Inspect the build logs to follow cloning, building, and health checks.</p><p>Each matching push queues the exact pushed commit using saved project settings and variables. Other branches, tags, repository mismatches, and deletions are ignored. Redelivering an accepted push from GitHub should not create another deployment.</p></> },
-    { id: 'troubleshooting', title: 'When a delivery or clone fails', content: <><p>If ForgeDock says <strong>Waiting for GitHub</strong>, check that both terminals are still running. In GitHub's webhook <strong>Recent deliveries</strong>, inspect the response and redeliver the connection check after correcting it.</p><ul><li><strong>404:</strong> check the full URL, project ID, and current tunnel hostname. Restart ForgeDock after installing API changes.</li><li><strong>401:</strong> update GitHub with the current webhook secret, especially after rotation.</li><li><strong>415:</strong> choose application/json.</li><li><strong>409:</strong> wait for the project's stop/delete operation to finish, then redeliver the push.</li><li><strong>Connection works but no deployment:</strong> enable auto-deploy and check the exact repository and branch.</li></ul><p>Private GitHub repositories also need a repository-scoped token with <strong>Contents: Read-only</strong> in the server's private <code>.env</code>:</p><Code language=".env">{"ForgeDock__GitHubToken=github_pat_your_actual_token"}</Code><p>Restart ForgeDock after setting or changing this token. The webhook secret verifies notifications; the GitHub token grants private cloning access. A running worker does not automatically reload edits to .env.</p></> },
-    { id: 'production', title: 'Use a permanent public endpoint', content: <><p>For a server, configure a trusted HTTPS reverse proxy to forward only <code>POST /api/webhooks/github/*</code> to the API on <code>127.0.0.1:5080</code>, preserving the body and GitHub headers. Set the public origin in the server .env and restart the API:</p><Code language=".env">{"ForgeDock__WebhookBaseUrl=https://hooks.example.com"}</Code><p>This sets the default dashboard setup link; it does not provision DNS, HTTPS, or routing. The managed application edge does not expose webhook routes automatically. The editable URL field is enough for temporary tunnel testing.</p><p>Disabling auto-deploy affects future deliveries. Already queued deployments can be cancelled in history. A successful webhook delivery means the deployment was queued; a failed build still requires checking deployment logs.</p><a href="https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/" target="_blank" rel="noreferrer">Cloudflare Quick Tunnel documentation ↗</a></> },
-  ]},
-  { slug: 'automatic-builds', title: 'Automatic builds', group: 'BUILD & DEPLOY', summary: 'Ship supported applications without maintaining a Dockerfile.', keywords: 'railpack buildkit autodetect node python go rust dotnet build command start command PORT', sections: [
-    { id: 'selection', title: 'Let your repository choose the builder', content: <><p>Choose <strong>Auto</strong> in your project settings. ForgeDock checks the configured Dockerfile path, which defaults to <code>Dockerfile</code>. If the file exists, Docker builds the image. If it is absent, Railpack detects the runtime and builds the image with BuildKit.</p><p>Set <strong>Root directory</strong> to <code>backend</code> or <code>frontend</code> for independent applications in a monorepo; the default is <code>.</code>. Dockerfile paths are relative to this directory. Existing projects keep their saved build method; switching to Auto is an explicit settings change.</p><Note>Auto does not fall back after a Dockerfile build fails. Fix that build or remove the Dockerfile if you intend to use Railpack.</Note></> },
-    { id: 'commands', title: 'Override build and start commands', content: <><p>Railpack detects dependencies and application commands from your repository. For custom workflows, set the optional <strong>Build command</strong> or <strong>Start command</strong> in ForgeDock. Leave them empty to use detection.</p><Code language="Project settings">{"Build command   npm run build\nStart command   node dist/server.js"}</Code><p>These fields apply to Railpack builds. You can also commit a <code>railpack.json</code> file for more advanced configuration. Dashboard command overrides take precedence over detection.</p><p>Unsupported projects or a missing start command fail with build logs. Review the <a href="https://railpack.com/" target="_blank" rel="noreferrer">Railpack language guides ↗</a> for your runtime.</p></> },
-    { id: 'runtime', title: 'Configure the runtime', content: <><p>Auto projects receive <code>PORT</code> set to the configured container port. Your server should listen on <code>0.0.0.0</code> and read that variable. If you save your own <code>PORT</code> in Environment, make sure it matches the configured port.</p><Code language="JavaScript">{"server.listen(Number(process.env.PORT || 8080), '0.0.0.0');"}</Code><p>Saved environment variables are available during Railpack builds and at runtime, including <code>RAILPACK_*</code> settings. Deploy again to apply changes. Frontend build variables such as <code>VITE_*</code> can become public in generated assets.</p></> },
-    { id: 'builder-setup', title: 'Prepare your worker', content: <><p>The startup script sets up Railpack and BuildKit. When starting services manually, run:</p><Code>{"make railpack\nmake worker"}</Code><p>The installer pins Railpack 0.40.1, verifies its release checksum, and starts a private, privileged BuildKit container on your trusted host. It publishes no host ports.</p><p>Operators can override the defaults in <code>.env</code>:</p><Code language=".env">{"ForgeDock__RailpackPath=/absolute/path/to/railpack\nForgeDock__BuildKitHost=docker-container://forgedock-buildkit"}</Code><p>See the <a href="https://railpack.com/reference/cli/" target="_blank" rel="noreferrer">official Railpack CLI reference ↗</a> for the underlying build commands.</p></> },
-  ]},
-  { slug: 'dockerfile', title: 'Dockerfile deployments', group: 'BUILD & DEPLOY', summary: 'Take full control over your application image.', keywords: 'docker build custom image monorepo Dockerfile paths context', sections: [
-    { id: 'configure', title: 'Use your own Dockerfile', content: <><p>Select <strong>Dockerfile</strong> and set the path relative to the configured root directory, such as <code>Dockerfile</code> or <code>services/api/Dockerfile</code>. The worker uses the configured root directory as the Docker build context, defaulting to the repository root.</p><p>The configured file must exist. Absolute paths, parent traversal, and symbolic links in the Dockerfile path are rejected.</p></> },
-    { id: 'example', title: 'A minimal Node application', content: <><Code language="Dockerfile">{"FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nENV PORT=8080\nEXPOSE 8080\nCMD [\"npm\", \"start\"]"}</Code><p>This example assumes a committed npm lockfile and a production start script. Your app must bind to <code>0.0.0.0:8080</code>; configure port <code>8080</code> in ForgeDock.</p></> },
-    { id: 'runtime', title: 'Build once, run a healthy version', content: <><p>Dockerfile builds use the image's entrypoint and command. ForgeDock applies project variables at runtime and starts the container with resource limits, dropped capabilities, and no host-published application port. nginx reaches it over the managed Docker network.</p><p>A saved project variable is not automatically a Docker build argument. Include non-secret build configuration in the repository or Dockerfile as appropriate.</p></> },
-  ]},
-  { slug: 'compose', title: 'Docker Compose', group: 'BUILD & DEPLOY', summary: 'Deploy a stack with one public service and private dependencies.', keywords: 'multi service database postgres redis compose volumes persistent stack', sections: [
-    { id: 'setup', title: 'Prepare Compose support', content: <><p>Install the private, checksum-verified Compose executable once:</p><Code>{"make compose"}</Code><p>Select <strong>Docker Compose</strong> in your project. Enter the repository-relative Compose file path, the public service name, and that service's internal port.</p></> },
-    { id: 'routing', title: 'Choose the public service', content: <><p>Only the selected service receives application traffic through nginx. Other services communicate on the stack's private networks. ForgeDock removes host-published ports from the resolved Compose configuration.</p><Code language="Project settings">{"Compose file    compose.yaml\nPublic service  web\nContainer port  3000\nHealth endpoint /health"}</Code><p>Inspect the service status table in deployment history for each service's current state. Updates may briefly interrupt the stack.</p></> },
-    { id: 'variables', title: 'Reference project variables', content: <><p>Save variables in ForgeDock and interpolate them in your Compose file:</p><Code language="yaml">{"services:\n  web:\n    build: .\n    environment:\n      DATABASE_URL: ${DATABASE_URL}"}</Code><p>Keep secrets in project variables rather than committing them. ForgeDock encrypts saved values and retained manifests at rest.</p></> },
-    { id: 'volumes', title: 'Keep your data across deployments', content: <><p>Use supported named volumes for persistent data. They are retained when a project is deleted, so deleting a project does not erase your application's database volume.</p><p>Rollback restores the retained application version and variables. It does not reverse changes already made to a database or its schema.</p><Note title="Supported configuration">ForgeDock validates Compose manifests and rejects unsupported host access and configuration. Check deployment logs for validation errors before changing the stack.</Note></> },
-  ]},
-  { slug: 'custom-domains', title: 'Custom domains & HTTPS', group: 'BUILD & DEPLOY', summary: 'Give your application a domain you own, secured with automatic HTTPS.', keywords: 'dns domain cname txt A AAAA tls ssl certificate caddy letsencrypt ports public renewal', sections: [
-    { id: 'server-setup', title: 'Prepare your public server', content: <><p>Choose a DNS target such as <code>deploy.example.com</code> and point it to your server's public IP address. Use an email you monitor for certificate registration.</p><p>Configure the following values in the server's private <code>.env</code>, replacing the examples with your own hostname, public IP, and email:</p><Code language=".env">{`ForgeDock__Domains__Enabled=true
+  {
+    slug: '',
+    title: 'Introduction',
+    group: 'GETTING STARTED',
+    summary: 'Your code. Your infrastructure. A clear path to production.',
+    keywords: 'overview welcome platform architecture',
+    sections: [
+      {
+        id: 'overview',
+        title: 'Meet your deployment control room',
+        content: (
+          <>
+            <p>
+              ForgeDock turns Git repositories into running applications on a Linux host you
+              control. Connect a repository, choose how it builds, and follow every step from source
+              to a healthy service.
+            </p>
+            <div className="docs-flow">
+              <span>
+                01 <b>Connect</b>
+                <small>Public or private Git repository</small>
+              </span>
+              <i aria-hidden="true">→</i>
+              <span>
+                02 <b>Build</b>
+                <small>Auto, Dockerfile, Compose</small>
+              </span>
+              <i aria-hidden="true">→</i>
+              <span>
+                03 <b>Deploy</b>
+                <small>Health checks + routing</small>
+              </span>
+            </div>
+          </>
+        ),
+      },
+      {
+        id: 'start-here',
+        title: 'Start here',
+        content: (
+          <div className="docs-cards">
+            <Link slug="quickstart">
+              <span className="docs-card-icon">↗</span>
+              <h3>Get up and running</h3>
+              <p>Start your workspace locally with a single command.</p>
+              <span>
+                Quickstart <b>→</b>
+              </span>
+            </Link>
+            <Link slug="automatic-builds">
+              <span className="docs-card-icon">◇</span>
+              <h3>Deploy without a Dockerfile</h3>
+              <p>Let Railpack detect your application and build its image.</p>
+              <span>
+                Automatic builds <b>→</b>
+              </span>
+            </Link>
+            <Link slug="first-deployment">
+              <span className="docs-card-icon">▤</span>
+              <h3>Ship your first service</h3>
+              <p>Connect a repository and take it through a deployment.</p>
+              <span>
+                First deployment <b>→</b>
+              </span>
+            </Link>
+          </div>
+        ),
+      },
+      {
+        id: 'how-it-works',
+        title: 'Built around a simple workflow',
+        content: (
+          <>
+            <p>
+              The dashboard manages projects and deployment history. An API stores configuration in
+              PostgreSQL, a worker builds and starts containers, and nginx sends traffic to your
+              active application.
+            </p>
+            <p>
+              Single-application deployments switch traffic after HTTP health checks pass. If a new
+              build fails, your existing route keeps serving its current version. Successful images
+              are retained so you can restart or roll back.
+            </p>
+            <Note title="A workspace you operate">
+              This release is designed for one trusted operator on a single Linux host. Local routes
+              use HTTP and bind to your machine. Custom domains and automatic HTTPS are available
+              when you configure a public server. Private GitHub repositories use a
+              server-configured access token. Team accounts are not included.
+            </Note>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'quickstart',
+    title: 'Quickstart',
+    group: 'GETTING STARTED',
+    summary: 'Start your workspace and open the dashboard in minutes.',
+    keywords: 'install setup run startup prerequisites linux node dotnet docker token',
+    sections: [
+      {
+        id: 'prerequisites',
+        title: 'Before you begin',
+        content: (
+          <>
+            <p>You need a Linux machine with the following tools installed:</p>
+            <ul>
+              <li>.NET 10 SDK</li>
+              <li>Node.js 22.12 or newer, and npm</li>
+              <li>Docker Engine, running and accessible to your user</li>
+              <li>Git, Bash, Make, OpenSSL, curl, tar, sha256sum, install, and setsid</li>
+            </ul>
+            <p>The automatic-build installer supports x86_64 and aarch64 hosts.</p>
+          </>
+        ),
+      },
+      {
+        id: 'start-workspace',
+        title: 'Start your workspace',
+        content: (
+          <>
+            <p>From the repository directory, run:</p>
+            <Code>{'./scripts/start-local.sh'}</Code>
+            <p>
+              The script creates your local configuration, starts PostgreSQL, nginx, and BuildKit,
+              installs Railpack and frontend dependencies, applies database migrations, and launches
+              the API, worker, and dashboard. Your existing <code>.env</code> is preserved.
+            </p>
+            <Note title="First launch">
+              The first run downloads dependencies and container images. Keep the terminal open
+              while the workspace is running.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'sign-in',
+        title: 'Open the dashboard',
+        content: (
+          <>
+            <p>
+              Visit <a href="http://127.0.0.1:5173">http://127.0.0.1:5173</a>. Open your local{' '}
+              <code>.env</code> file and use the <code>ForgeDock__ApiToken</code> value as your
+              management token.
+            </p>
+            <p>
+              The token stays in browser memory for the current session. Documentation is available
+              without signing in.
+            </p>
+            <Link slug="first-deployment" className="docs-inline-link">
+              Continue to your first deployment →
+            </Link>
+          </>
+        ),
+      },
+      {
+        id: 'stop-workspace',
+        title: 'Stop and start again',
+        content: (
+          <>
+            <p>
+              Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the startup terminal to stop the API, worker,
+              and dashboard. Run the same script to start them again.
+            </p>
+            <p>Infrastructure containers stay running. To stop those too:</p>
+            <Code>{'docker stop forgedock-proxy forgedock-postgres forgedock-buildkit'}</Code>
+            <p>
+              Your database persists in the PostgreSQL volume. Keep your <code>.env</code> and
+              secret key safe between launches.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'first-deployment',
+    title: 'Your first deployment',
+    group: 'GETTING STARTED',
+    summary: 'Go from a repository URL to a running application.',
+    keywords:
+      'project create git github private branch port health deploy route webhook auto deploy',
+    sections: [
+      {
+        id: 'auto-deploy',
+        title: 'Deploy automatically from GitHub',
+        content: (
+          <>
+            <p>
+              Enable <strong>GitHub auto-deploy</strong> in Project Settings to deploy pushes to
+              your configured branch. Use a Cloudflare Quick Tunnel to test from your local machine,
+              or configure a permanent HTTPS endpoint on your server.
+            </p>
+            <Link slug="github-webhooks" className="docs-inline-link">
+              Set up GitHub webhooks with Cloudflare →
+            </Link>
+          </>
+        ),
+      },
+      {
+        id: 'private-github',
+        title: 'Connect a private GitHub repository',
+        content: (
+          <>
+            <p>
+              Create a fine-grained GitHub personal access token for the repository owner, select
+              the repositories to deploy, and grant <strong>Contents: Read-only</strong>. If your
+              organization requires approval, wait for approval before deploying.
+            </p>
+            <p>
+              Set the token in the server's private <code>.env</code> and restart the worker:
+            </p>
+            <Code language=".env">{'ForgeDock__GitHubToken=github_pat_your_token'}</Code>
+            <p>
+              Enter the normal HTTPS repository URL, such as{' '}
+              <code>https://github.com/owner/service.git</code>. The worker uses this token for
+              cloning and fetching specific commits in Auto, Dockerfile, and Compose deployments.
+              This is a shared server credential; rotate or replace it in the server configuration
+              when it expires. Keep it out of project Environment variables.
+            </p>
+            <p>
+              SSH, GitHub Enterprise hosts, private submodules, and private package registries
+              require separate support.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'connect',
+        title: '1. Connect your repository',
+        content: (
+          <>
+            <p>
+              In the dashboard, select <strong>New project</strong>. Give your application a name,
+              enter its HTTPS Git URL, and choose a branch, such as <code>main</code>.
+            </p>
+            <p>
+              URLs must not contain credentials. Private GitHub repositories require the server
+              token described above. SSH cloning is not supported.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'configure',
+        title: '2. Choose how it builds',
+        content: (
+          <>
+            <p>
+              Choose <strong>Auto</strong> for most single applications. ForgeDock uses your
+              configured Dockerfile when present and otherwise builds with Railpack. Use{' '}
+              <strong>Dockerfile</strong> to require a specific file, or{' '}
+              <strong>Docker Compose</strong> for a multi-service stack.
+            </p>
+            <p>
+              Set <strong>Container port</strong> to the port your application listens on inside its
+              container. Set an HTTP <strong>Health endpoint</strong> that responds successfully,
+              such as <code>/</code> or <code>/health</code>.
+            </p>
+            <Note title="Make it reachable">
+              Your app must listen on <code>0.0.0.0</code>, rather than only localhost. Auto
+              projects receive a runtime <code>PORT</code> matching the configured container port
+              unless you explicitly save a different PORT variable.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'deploy',
+        title: '3. Build and deploy',
+        content: (
+          <>
+            <p>
+              Create the project, then select <strong>Deploy</strong>. The deployment history shows
+              progress through cloning, building, starting, health checking, and routing. Open the
+              logs to see the selected builder and application output.
+            </p>
+            <p>
+              When the deployment reaches <strong>Running</strong>, open the application route at
+              the top of the project page.
+            </p>
+            <Code language="text">{'http://<project-id-without-hyphens>.localhost:8088'}</Code>
+          </>
+        ),
+      },
+      {
+        id: 'next',
+        title: 'What comes next',
+        content: (
+          <>
+            <p>
+              Save runtime variables in the <strong>Environment</strong> tab. Edit future deployment
+              settings in <strong>Settings</strong>. To ship another version, push your changes to
+              the repository and select <strong>Deploy</strong> again.
+            </p>
+            <p>ForgeDock deploys on demand; Git push webhooks are not included.</p>
+            <Link slug="deployments" className="docs-inline-link">
+              Learn about deployments and rollback →
+            </Link>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'github-webhooks',
+    title: 'GitHub webhooks',
+    group: 'BUILD & DEPLOY',
+    summary: 'Connect GitHub to your local workspace with Cloudflare, then deploy on every push.',
+    keywords:
+      'auto deploy autodeploy github webhook cloudflare tunnel trycloudflare secret payload url push branch master main private token',
+    sections: [
+      {
+        id: 'cloudflare',
+        title: '1. Start ForgeDock and the Cloudflare tunnel',
+        content: (
+          <>
+            <p>
+              Start the workspace from the ForgeDock repository directory and keep its terminal
+              open:
+            </p>
+            <Code>{'bash scripts/start-local.sh'}</Code>
+            <p>In a second terminal on the same Linux host, run:</p>
+            <Code>
+              {
+                'docker run --rm --network host cloudflare/cloudflared:latest tunnel --url http://127.0.0.1:5080'
+              }
+            </Code>
+            <p>
+              Copy the <code>https://...trycloudflare.com</code> address printed in the output. Keep
+              this terminal open too. The tunnel points at the API on <strong>5080</strong>, not the
+              dashboard or your deployed app.
+            </p>
+            <Note title="Temporary public address">
+              No Cloudflare account or domain is required. This command temporarily exposes the API
+              service; management routes require your management token and webhooks verify their own
+              secret. Stop the tunnel when finished. If restarting it gives a different hostname,
+              update your GitHub webhook URL.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'payload-url',
+        title: '2. Enable auto-deploy and copy the full URL',
+        content: (
+          <>
+            <p>
+              Open your project in ForgeDock and go to{' '}
+              <strong>Settings → GitHub auto-deploy → Enable auto-deploy</strong>. Confirm your
+              configured branch is the one you will push to: <code>master</code> and{' '}
+              <code>main</code> are different.
+            </p>
+            <p>
+              Paste the Cloudflare HTTPS address into the editable{' '}
+              <strong>Webhook payload URL</strong> field, then click outside it. ForgeDock adds your
+              project's webhook path automatically. Copy the complete URL:
+            </p>
+            <Code language="Payload URL">
+              {'https://your-tunnel.trycloudflare.com/api/webhooks/github/<project-id>'}
+            </Code>
+            <p>
+              GitHub needs the full URL, including the project ID. The Cloudflare address alone is
+              not enough. The edited URL is remembered in this browser; copy changes into GitHub
+              yourself.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'github-setup',
+        title: '3. Add the webhook in GitHub',
+        content: (
+          <>
+            <p>
+              In your repository on GitHub, open <strong>Settings → Webhooks → Add webhook</strong>.
+            </p>
+            <div className="docs-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Payload URL</td>
+                    <td>The complete Cloudflare URL from ForgeDock</td>
+                  </tr>
+                  <tr>
+                    <td>Content type</td>
+                    <td>
+                      <code>application/json</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Secret</td>
+                    <td>The webhook secret shown in ForgeDock</td>
+                  </tr>
+                  <tr>
+                    <td>Events</td>
+                    <td>Just the push event</td>
+                  </tr>
+                  <tr>
+                    <td>SSL verification / Active</td>
+                    <td>Enabled</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Click <strong>Add webhook</strong>. GitHub sends a connection check; within about 10
+              seconds, ForgeDock should show <strong>GitHub connection verified</strong>.
+            </p>
+            <Note title="Finding the secret">
+              The secret is shown when you first enable auto-deploy. If it is hidden, click Rotate
+              webhook secret, confirm, and copy the new value into GitHub. Rotation immediately
+              invalidates the old secret. Keep secrets out of URLs and source files.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'test-push',
+        title: '4. Push a test commit',
+        content: (
+          <>
+            <p>
+              In the repository being deployed, make a change and push it to the configured branch.
+              You can also create an empty test commit:
+            </p>
+            <Code>
+              {
+                'git branch --show-current\ngit commit --allow-empty -m "Test ForgeDock auto-deploy"\ngit push'
+              }
+            </Code>
+            <p>
+              Make sure the current branch matches ForgeDock before committing. The auto-deploy
+              panel should show <strong>Deployment queued</strong>, and deployment history should
+              show a new entry labeled <strong>GitHub push</strong>. Inspect the build logs to
+              follow cloning, building, and health checks.
+            </p>
+            <p>
+              Each matching push queues the exact pushed commit using saved project settings and
+              variables. Other branches, tags, repository mismatches, and deletions are ignored.
+              Redelivering an accepted push from GitHub should not create another deployment.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'troubleshooting',
+        title: 'When a delivery or clone fails',
+        content: (
+          <>
+            <p>
+              If ForgeDock says <strong>Waiting for GitHub</strong>, check that both terminals are
+              still running. In GitHub's webhook <strong>Recent deliveries</strong>, inspect the
+              response and redeliver the connection check after correcting it.
+            </p>
+            <ul>
+              <li>
+                <strong>404:</strong> check the full URL, project ID, and current tunnel hostname.
+                Restart ForgeDock after installing API changes.
+              </li>
+              <li>
+                <strong>401:</strong> update GitHub with the current webhook secret, especially
+                after rotation.
+              </li>
+              <li>
+                <strong>415:</strong> choose application/json.
+              </li>
+              <li>
+                <strong>409:</strong> wait for the project's stop/delete operation to finish, then
+                redeliver the push.
+              </li>
+              <li>
+                <strong>Connection works but no deployment:</strong> enable auto-deploy and check
+                the exact repository and branch.
+              </li>
+            </ul>
+            <p>
+              Private GitHub repositories also need a repository-scoped token with{' '}
+              <strong>Contents: Read-only</strong> in the server's private <code>.env</code>:
+            </p>
+            <Code language=".env">{'ForgeDock__GitHubToken=github_pat_your_actual_token'}</Code>
+            <p>
+              Restart ForgeDock after setting or changing this token. The webhook secret verifies
+              notifications; the GitHub token grants private cloning access. A running worker does
+              not automatically reload edits to .env.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'production',
+        title: 'Use a permanent public endpoint',
+        content: (
+          <>
+            <p>
+              For a server, configure a trusted HTTPS reverse proxy to forward only{' '}
+              <code>POST /api/webhooks/github/*</code> to the API on <code>127.0.0.1:5080</code>,
+              preserving the body and GitHub headers. Set the public origin in the server .env and
+              restart the API:
+            </p>
+            <Code language=".env">{'ForgeDock__WebhookBaseUrl=https://hooks.example.com'}</Code>
+            <p>
+              This sets the default dashboard setup link; it does not provision DNS, HTTPS, or
+              routing. The managed application edge does not expose webhook routes automatically.
+              The editable URL field is enough for temporary tunnel testing.
+            </p>
+            <p>
+              Disabling auto-deploy affects future deliveries. Already queued deployments can be
+              cancelled in history. A successful webhook delivery means the deployment was queued; a
+              failed build still requires checking deployment logs.
+            </p>
+            <a
+              href="https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Cloudflare Quick Tunnel documentation ↗
+            </a>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'automatic-builds',
+    title: 'Automatic builds',
+    group: 'BUILD & DEPLOY',
+    summary: 'Ship supported applications without maintaining a Dockerfile.',
+    keywords:
+      'railpack buildkit autodetect node python go rust dotnet build command start command PORT',
+    sections: [
+      {
+        id: 'selection',
+        title: 'Let your repository choose the builder',
+        content: (
+          <>
+            <p>
+              Choose <strong>Auto</strong> in your project settings. ForgeDock checks the configured
+              Dockerfile path, which defaults to <code>Dockerfile</code>. If the file exists, Docker
+              builds the image. If it is absent, Railpack detects the runtime and builds the image
+              with BuildKit.
+            </p>
+            <p>
+              Set <strong>Root directory</strong> to <code>backend</code> or <code>frontend</code>{' '}
+              for independent applications in a monorepo; the default is <code>.</code>. Dockerfile
+              paths are relative to this directory. Existing projects keep their saved build method;
+              switching to Auto is an explicit settings change.
+            </p>
+            <Note>
+              Auto does not fall back after a Dockerfile build fails. Fix that build or remove the
+              Dockerfile if you intend to use Railpack.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'commands',
+        title: 'Override build and start commands',
+        content: (
+          <>
+            <p>
+              Railpack detects dependencies and application commands from your repository. For
+              custom workflows, set the optional <strong>Build command</strong> or{' '}
+              <strong>Start command</strong> in ForgeDock. Leave them empty to use detection.
+            </p>
+            <Code language="Project settings">
+              {'Build command   npm run build\nStart command   node dist/server.js'}
+            </Code>
+            <p>
+              These fields apply to Railpack builds. You can also commit a{' '}
+              <code>railpack.json</code> file for more advanced configuration. Dashboard command
+              overrides take precedence over detection.
+            </p>
+            <p>
+              Unsupported projects or a missing start command fail with build logs. Review the{' '}
+              <a href="https://railpack.com/" target="_blank" rel="noreferrer">
+                Railpack language guides ↗
+              </a>{' '}
+              for your runtime.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'runtime',
+        title: 'Configure the runtime',
+        content: (
+          <>
+            <p>
+              Auto projects receive <code>PORT</code> set to the configured container port. Your
+              server should listen on <code>0.0.0.0</code> and read that variable. If you save your
+              own <code>PORT</code> in Environment, make sure it matches the configured port.
+            </p>
+            <Code language="JavaScript">
+              {"server.listen(Number(process.env.PORT || 8080), '0.0.0.0');"}
+            </Code>
+            <p>
+              Saved environment variables are available during Railpack builds and at runtime,
+              including <code>RAILPACK_*</code> settings. Deploy again to apply changes. Frontend
+              build variables such as <code>VITE_*</code> can become public in generated assets.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'builder-setup',
+        title: 'Prepare your worker',
+        content: (
+          <>
+            <p>
+              The startup script sets up Railpack and BuildKit. When starting services manually,
+              run:
+            </p>
+            <Code>{'make railpack\nmake worker'}</Code>
+            <p>
+              The installer pins Railpack 0.40.1, verifies its release checksum, and starts a
+              private, privileged BuildKit container on your trusted host. It publishes no host
+              ports.
+            </p>
+            <p>
+              Operators can override the defaults in <code>.env</code>:
+            </p>
+            <Code language=".env">
+              {
+                'ForgeDock__RailpackPath=/absolute/path/to/railpack\nForgeDock__BuildKitHost=docker-container://forgedock-buildkit'
+              }
+            </Code>
+            <p>
+              See the{' '}
+              <a href="https://railpack.com/reference/cli/" target="_blank" rel="noreferrer">
+                official Railpack CLI reference ↗
+              </a>{' '}
+              for the underlying build commands.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'dockerfile',
+    title: 'Dockerfile deployments',
+    group: 'BUILD & DEPLOY',
+    summary: 'Take full control over your application image.',
+    keywords: 'docker build custom image monorepo Dockerfile paths context',
+    sections: [
+      {
+        id: 'configure',
+        title: 'Use your own Dockerfile',
+        content: (
+          <>
+            <p>
+              Select <strong>Dockerfile</strong> and set the path relative to the configured root
+              directory, such as <code>Dockerfile</code> or <code>services/api/Dockerfile</code>.
+              The worker uses the configured root directory as the Docker build context, defaulting
+              to the repository root.
+            </p>
+            <p>
+              The configured file must exist. Absolute paths, parent traversal, and symbolic links
+              in the Dockerfile path are rejected.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'example',
+        title: 'A minimal Node application',
+        content: (
+          <>
+            <Code language="Dockerfile">
+              {
+                'FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nENV PORT=8080\nEXPOSE 8080\nCMD ["npm", "start"]'
+              }
+            </Code>
+            <p>
+              This example assumes a committed npm lockfile and a production start script. Your app
+              must bind to <code>0.0.0.0:8080</code>; configure port <code>8080</code> in ForgeDock.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'runtime',
+        title: 'Build once, run a healthy version',
+        content: (
+          <>
+            <p>
+              Dockerfile builds use the image's entrypoint and command. ForgeDock applies project
+              variables at runtime and starts the container with resource limits, dropped
+              capabilities, and no host-published application port. nginx reaches it over the
+              managed Docker network.
+            </p>
+            <p>
+              A saved project variable is not automatically a Docker build argument. Include
+              non-secret build configuration in the repository or Dockerfile as appropriate.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'compose',
+    title: 'Docker Compose',
+    group: 'BUILD & DEPLOY',
+    summary: 'Deploy a stack with one public service and private dependencies.',
+    keywords: 'multi service database postgres redis compose volumes persistent stack',
+    sections: [
+      {
+        id: 'setup',
+        title: 'Prepare Compose support',
+        content: (
+          <>
+            <p>Install the private, checksum-verified Compose executable once:</p>
+            <Code>{'make compose'}</Code>
+            <p>
+              Select <strong>Docker Compose</strong> in your project. Enter the repository-relative
+              Compose file path, the public service name, and that service's internal port.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'routing',
+        title: 'Choose the public service',
+        content: (
+          <>
+            <p>
+              Only the selected service receives application traffic through nginx. Other services
+              communicate on the stack's private networks. ForgeDock removes host-published ports
+              from the resolved Compose configuration.
+            </p>
+            <Code language="Project settings">
+              {
+                'Compose file    compose.yaml\nPublic service  web\nContainer port  3000\nHealth endpoint /health'
+              }
+            </Code>
+            <p>
+              Inspect the service status table in deployment history for each service's current
+              state. Updates may briefly interrupt the stack.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'variables',
+        title: 'Reference project variables',
+        content: (
+          <>
+            <p>Save variables in ForgeDock and interpolate them in your Compose file:</p>
+            <Code language="yaml">
+              {
+                'services:\n  web:\n    build: .\n    environment:\n      DATABASE_URL: ${DATABASE_URL}'
+              }
+            </Code>
+            <p>
+              Keep secrets in project variables rather than committing them. ForgeDock encrypts
+              saved values and retained manifests at rest.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'volumes',
+        title: 'Keep your data across deployments',
+        content: (
+          <>
+            <p>
+              Use supported named volumes for persistent data. They are retained when a project is
+              deleted, so deleting a project does not erase your application's database volume.
+            </p>
+            <p>
+              Rollback restores the retained application version and variables. It does not reverse
+              changes already made to a database or its schema.
+            </p>
+            <Note title="Supported configuration">
+              ForgeDock validates Compose manifests and rejects unsupported host access and
+              configuration. Check deployment logs for validation errors before changing the stack.
+            </Note>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'custom-domains',
+    title: 'Custom domains & HTTPS',
+    group: 'BUILD & DEPLOY',
+    summary: 'Give your application a domain you own, secured with automatic HTTPS.',
+    keywords:
+      'dns domain cname txt A AAAA tls ssl certificate caddy letsencrypt ports public renewal',
+    sections: [
+      {
+        id: 'server-setup',
+        title: 'Prepare your public server',
+        content: (
+          <>
+            <p>
+              Choose a DNS target such as <code>deploy.example.com</code> and point it to your
+              server's public IP address. Use an email you monitor for certificate registration.
+            </p>
+            <p>
+              Configure the following values in the server's private <code>.env</code>, replacing
+              the examples with your own hostname, public IP, and email:
+            </p>
+            <Code language=".env">{`ForgeDock__Domains__Enabled=true
 ForgeDock__Domains__Target=deploy.example.com
 ForgeDock__Domains__Addresses=203.0.113.10
 ForgeDock__Domains__Email=ops@example.com
 ForgeDock__Domains__BindAddress=0.0.0.0
 ForgeDock__Domains__HttpPort=80
-ForgeDock__Domains__HttpsPort=443`}</Code><p>Make ports <strong>80</strong> and <strong>443</strong> reachable from the internet. Run the startup script, or run <code>make edge</code> with infrastructure running. Restart the API and worker after changing server settings.</p><Note title="Local development stays local">Custom domains are disabled by default. The dashboard, management API, database, and development proxy keep their loopback bindings. When enabled without public bind settings, the edge uses localhost ports 8080 and 8443.</Note></> },
-    { id: 'attach-domain', title: 'Add a domain to your project', content: <><p>Open your project, select <strong>Domains</strong>, and enter a hostname such as <code>app.example.com</code>. Select <strong>Add domain</strong> to get its DNS configuration.</p><p>Use a domain you own, without a scheme, port, path, or wildcard. Each hostname belongs to one project at a time. Apex domains and subdomains are supported.</p></> },
-    { id: 'dns-records', title: 'Configure DNS and verify ownership', content: <><p>At your DNS provider, add the exact <strong>TXT</strong> record shown in the dashboard at <code>_forgedock.app.example.com</code>. It proves domain ownership. Add the displayed <strong>A/AAAA</strong> records to direct traffic to your server.</p><p>For a subdomain, you can use a <strong>CNAME</strong> to the configured server target instead of address records. Keep the TXT record. Some DNS providers expect relative names: in the <code>example.com</code> zone, use <code>app</code> and <code>_forgedock.app</code>.</p><Note title="Every address must match">Remove stale AAAA records and disable DNS proxying while verifying. The worker checks public DNS; local hosts-file entries do not count. All resolved addresses must match the server addresses you configured.</Note><p>Pending records are checked automatically about once per minute. Select <strong>Verify DNS</strong> to request another check after updating your records.</p></> },
-    { id: 'https-status', title: 'Wait for HTTPS to become active', content: <><p>After DNS verification, the HTTPS edge obtains a certificate and redirects HTTP traffic to HTTPS. The Domains tab shows verification progress, certificate status, and expiration.</p><p>If the project has no active version, deploy it to make the domain serve your app. Domains follow successful deployments, restart, and rollback. Stopping the project makes its domains unavailable without detaching them.</p><p>The worker checks the certificate actually served by the edge, including its hostname and trust status. Your existing local application URL stays available.</p></> },
-    { id: 'renewal', title: 'Automatic renewal and removal', content: <><p>Certificates renew automatically while the edge is running. Preserve and back up <code>.runtime/edge/data</code>, which holds private certificate keys and account state.</p><p>Select <strong>Remove domain</strong> to queue its removal from your project. The hostname becomes available again after the worker applies the configuration. The project and local URL are kept.</p></> },
-    { id: 'troubleshoot-https', title: 'Troubleshoot certificate issuance', content: <><p>Check public reachability on ports 80/443, DNS addresses, and CAA records. Then inspect the edge logs:</p><Code>{`docker logs --tail 100 forgedock-edge`}</Code><p>Use the staging authority for repeated test issuances:</p><Code language=".env">{`ForgeDock__Domains__AcmeDirectory=https://acme-staging-v02.api.letsencrypt.org/directory`}</Code><p>Staging certificates are not trusted by browsers. Restore the production authority when ready and restart the API/worker. Wildcard domains, DNS-provider integrations, and importing external certificates are not supported in this release.</p><p>See <a href="https://caddyserver.com/docs/automatic-https" target="_blank" rel="noreferrer">Caddy automatic HTTPS ↗</a> for certificate validation and renewal details.</p></> },
-  ]},
-  { slug: 'environment', title: 'Environment variables', group: 'BUILD & DEPLOY', summary: 'Keep application configuration separate from your source code.', keywords: 'secrets encryption values PORT DATABASE_URL runtime build variables key', sections: [
-    { id: 'save', title: 'Add a variable', content: <><p>Open the project's <strong>Environment</strong> tab. Enter a name, such as <code>DATABASE_URL</code>, and a single-line value, then select <strong>Save variable</strong>.</p><p>Names use letters, numbers, and underscores, and must start with a letter or underscore. Saved values are encrypted at rest and never returned by the management API.</p></> },
-    { id: 'bulk-import', title: 'Import a .env file', content: <><p>Expand <strong>Import from .env</strong> in the Environment tab and paste up to 100 variables, one per line. Select <strong>Save variables</strong> to encrypt and save the entire batch.</p><Code language=".env">{'NODE_ENV=production\nPORT=8080\nDATABASE_URL="your connection string"'}</Code><p>Comments, optional export prefixes, empty values, and quoted single-line values are supported. Variable references such as <code>{'${PORT}'}</code> are kept as literal text. Duplicate names and invalid entries reject the entire batch with a line number. Errors do not echo secret values.</p><p>Existing variables are protected by default. Enable <strong>Replace variables that already exist</strong> to update matching names; other saved variables are kept. The editor clears after a successful save, and saved values remain hidden. Deploy again to apply changes.</p></> },
-    { id: 'apply', title: 'Apply changes with a deployment', content: <><p>Changing or deleting a variable affects future deployments. Select <strong>Deploy</strong> to run the application with the new configuration.</p><p>Queued deployments keep a snapshot of their original settings and values. Restart and rollback use the retained version's snapshot rather than current project variables.</p><Note title="Build and runtime availability">Single-application variables are injected when the container starts and are also passed to Railpack builds. Frontend build variables can become public in generated assets. Dockerfile builds do not receive saved variables. Compose variables can be referenced with <code>{'${NAME}'}</code> in the manifest.</Note></> },
-    { id: 'protect', title: 'Protect your workspace secrets', content: <><p>Keep your private <code>.env</code> out of version control. Back up <code>ForgeDock__SecretKey</code> with your database; existing encrypted values require the same key to decrypt.</p><p>Known project secret values are redacted from persisted logs. Avoid making your application print secrets or encode them into log output.</p></> },
-  ]},
-  { slug: 'deployments', title: 'Deployments & rollback', group: 'OPERATE', summary: 'Understand each deployment, inspect failures, and restore a version.', keywords: 'history stages logs failed running stopped restart rollback health previous image', sections: [
-    { id: 'lifecycle', title: 'Follow the deployment lifecycle', content: <><p>A fresh deployment progresses through these stages:</p><Code language="Lifecycle">{"Queued \u2192 Preparing \u2192 Cloning \u2192 Building\n       \u2192 Starting \u2192 HealthChecking \u2192 Routing \u2192 Running"}</Code><p>Deployment history preserves the source commit, timestamps, state, and logs. Select a history item to inspect that version. A failure includes a reason and leaves the previous single-application route in place.</p></> },
-    { id: 'logs', title: 'Read build and application logs', content: <><p>The log panel streams deployment output as the worker runs. Auto builds include a builder selection message so you can tell whether Dockerfile or Railpack was used.</p><p>Once a single application is running, the worker checks it periodically and collects recent container logs. Compose deployments also show service status.</p></> },
-    { id: 'rollback', title: 'Roll back to a retained version', content: <><p>Choose an earlier successful deployment in history and select <strong>Roll back</strong>. ForgeDock starts its retained image with the original configuration and variables, checks health, and updates the route.</p><p>Rollback skips cloning and building. It requires the retained image to still exist on the worker. Database contents and schema changes are not rolled back.</p></> },
-    { id: 'controls', title: 'Restart, stop, and delete', content: <><ul><li><strong>Restart</strong> creates a deployment from the active retained image and its saved settings.</li><li><strong>Stop</strong> stops the active application and removes its route.</li><li><strong>Delete</strong> removes project containers, routes, variables, and deployment history. Compose named data volumes are preserved.</li></ul><p>Retained images and source directories need separate operator cleanup. Wait for queued or active deployments to finish before stopping or deleting a project.</p></> },
-  ]},
-  { slug: 'metrics', title: 'Application metrics', group: 'OPERATE', summary: 'Understand resource usage, network traffic, and service uptime.', keywords: 'metrics monitoring cpu memory ram network disk io uptime processes charts graphs resource usage performance', sections: [
-    { id: 'overview', title: 'See how your application is running', content: <><p>Open a project and select <strong>Metrics</strong>. View CPU and memory usage, received and sent traffic, and resource history. Metrics work with Auto, Dockerfile, and Compose deployments.</p><p>The service table includes memory limits, container uptime, processes, network totals, and disk I/O totals. Compose projects can show all services together or filter to one service.</p></> },
-    { id: 'history', title: 'Explore your usage history', content: <><p>Choose <strong>Last hour</strong>, <strong>Last 6 hours</strong>, or <strong>Last 24 hours</strong>. Hover over a chart to inspect a sample. Project CPU and memory charts sum service usage before averaging it within each chart interval.</p><p>CPU is measured relative to one core: 100% means one core, so multi-core applications and service totals can exceed 100%. Memory reflects Docker’s Linux measurement with filesystem cache excluded. The displayed limit is the container’s available memory, which can be the host limit when no explicit Compose limit is set.</p><p>Network charts show bytes per second calculated between consecutive samples. Network and disk totals in the table are cumulative since the container started. They reset when its counters reset. Processes include kernel threads.</p></> },
-    { id: 'collection', title: 'Collection and data freshness', content: <><p>A separate collector in the worker samples running, managed application containers roughly every 30 seconds, independently of builds. The dashboard refreshes every 10 seconds. History is stored in PostgreSQL and retained for 24 hours; expired samples are cleaned up every 15 minutes while the worker runs.</p><p>The dashboard labels old samples as stale. If collection is interrupted, charts show gaps instead of implying zero usage. Traffic rates are unavailable for the first sample, after a restart or counter reset, and across long collection gaps.</p><Note title="After a deployment">The latest service table follows the active deployment. Historical charts include prior versions within the selected time range. Stopped applications keep their recent history, but do not generate new samples.</Note></> },
-    { id: 'setup', title: 'Start collecting metrics', content: <><p>Run the startup script to apply migrations and start the API and worker:</p><Code>{"./scripts/start-local.sh"}</Code><p>For an already-running workspace, apply <code>make migrate</code> and restart the API and worker after updating. Deploy an application and allow two samples for network rates to appear.</p><p>If samples remain stale, check the worker logs, Docker access, and PostgreSQL connectivity. No extra monitoring server is required. Request counts, HTTP latency, alerting, and external metrics exporters are not included.</p></> },
-  ]},
-  { slug: 'health-routing', title: 'Health checks & routing', group: 'OPERATE', summary: 'Send traffic only after your application is ready.', keywords: 'port PORT 0.0.0.0 localhost nginx url route proxy health 60 seconds', sections: [
-    { id: 'health', title: 'Configure a reliable health endpoint', content: <><p>Your health path must be a local absolute HTTP path, such as <code>/health</code>. Make it respond successfully when the application is ready to serve traffic.</p><p>For single applications, ForgeDock checks the container is running and retries HTTP checks for approximately 60 seconds. If the container exits or the check times out, the deployment fails.</p></> },
-    { id: 'ports', title: 'Match the application port', content: <><p>The container port in Settings must match the server's actual listening port. Bind your server to <code>0.0.0.0</code>. Auto mode supplies a default runtime <code>PORT</code>; an explicitly saved PORT takes precedence.</p><div className="docs-table-wrap"><table><thead><tr><th>Local service</th><th>Address</th></tr></thead><tbody><tr><td>Dashboard & documentation</td><td><code>127.0.0.1:5173</code></td></tr><tr><td>Management API</td><td><code>127.0.0.1:5080</code></td></tr><tr><td>Application proxy</td><td><code>127.0.0.1:8088</code></td></tr><tr><td>PostgreSQL</td><td><code>127.0.0.1:5432</code></td></tr></tbody></table></div></> },
-    { id: 'routes', title: 'Open your application route', content: <><p>Each project gets an HTTP route based on its ID:</p><Code language="text">{"http://<project-id-without-hyphens>.localhost:8088"}</Code><p>Use the application link in the dashboard after the deployment reaches Running. Local service ports bind to loopback. Add a custom domain in the Domains tab for public HTTPS. Configure your server first; the local URL remains available.</p></> },
-  ]},
+ForgeDock__Domains__HttpsPort=443`}</Code>
+            <p>
+              Make ports <strong>80</strong> and <strong>443</strong> reachable from the internet.
+              Run the startup script, or run <code>make edge</code> with infrastructure running.
+              Restart the API and worker after changing server settings.
+            </p>
+            <Note title="Local development stays local">
+              Custom domains are disabled by default. The dashboard, management API, database, and
+              development proxy keep their loopback bindings. When enabled without public bind
+              settings, the edge uses localhost ports 8080 and 8443.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'attach-domain',
+        title: 'Add a domain to your project',
+        content: (
+          <>
+            <p>
+              Open your project, select <strong>Domains</strong>, and enter a hostname such as{' '}
+              <code>app.example.com</code>. Select <strong>Add domain</strong> to get its DNS
+              configuration.
+            </p>
+            <p>
+              Use a domain you own, without a scheme, port, path, or wildcard. Each hostname belongs
+              to one project at a time. Apex domains and subdomains are supported.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'dns-records',
+        title: 'Configure DNS and verify ownership',
+        content: (
+          <>
+            <p>
+              At your DNS provider, add the exact <strong>TXT</strong> record shown in the dashboard
+              at <code>_forgedock.app.example.com</code>. It proves domain ownership. Add the
+              displayed <strong>A/AAAA</strong> records to direct traffic to your server.
+            </p>
+            <p>
+              For a subdomain, you can use a <strong>CNAME</strong> to the configured server target
+              instead of address records. Keep the TXT record. Some DNS providers expect relative
+              names: in the <code>example.com</code> zone, use <code>app</code> and{' '}
+              <code>_forgedock.app</code>.
+            </p>
+            <Note title="Every address must match">
+              Remove stale AAAA records and disable DNS proxying while verifying. The worker checks
+              public DNS; local hosts-file entries do not count. All resolved addresses must match
+              the server addresses you configured.
+            </Note>
+            <p>
+              Pending records are checked automatically about once per minute. Select{' '}
+              <strong>Verify DNS</strong> to request another check after updating your records.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'https-status',
+        title: 'Wait for HTTPS to become active',
+        content: (
+          <>
+            <p>
+              After DNS verification, the HTTPS edge obtains a certificate and redirects HTTP
+              traffic to HTTPS. The Domains tab shows verification progress, certificate status, and
+              expiration.
+            </p>
+            <p>
+              If the project has no active version, deploy it to make the domain serve your app.
+              Domains follow successful deployments, restart, and rollback. Stopping the project
+              makes its domains unavailable without detaching them.
+            </p>
+            <p>
+              The worker checks the certificate actually served by the edge, including its hostname
+              and trust status. Your existing local application URL stays available.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'renewal',
+        title: 'Automatic renewal and removal',
+        content: (
+          <>
+            <p>
+              Certificates renew automatically while the edge is running. Preserve and back up{' '}
+              <code>.runtime/edge/data</code>, which holds private certificate keys and account
+              state.
+            </p>
+            <p>
+              Select <strong>Remove domain</strong> to queue its removal from your project. The
+              hostname becomes available again after the worker applies the configuration. The
+              project and local URL are kept.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'troubleshoot-https',
+        title: 'Troubleshoot certificate issuance',
+        content: (
+          <>
+            <p>
+              Check public reachability on ports 80/443, DNS addresses, and CAA records. Then
+              inspect the edge logs:
+            </p>
+            <Code>{`docker logs --tail 100 forgedock-edge`}</Code>
+            <p>Use the staging authority for repeated test issuances:</p>
+            <Code language=".env">{`ForgeDock__Domains__AcmeDirectory=https://acme-staging-v02.api.letsencrypt.org/directory`}</Code>
+            <p>
+              Staging certificates are not trusted by browsers. Restore the production authority
+              when ready and restart the API/worker. Wildcard domains, DNS-provider integrations,
+              and importing external certificates are not supported in this release.
+            </p>
+            <p>
+              See{' '}
+              <a
+                href="https://caddyserver.com/docs/automatic-https"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Caddy automatic HTTPS ↗
+              </a>{' '}
+              for certificate validation and renewal details.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'environment',
+    title: 'Environment variables',
+    group: 'BUILD & DEPLOY',
+    summary: 'Keep application configuration separate from your source code.',
+    keywords: 'secrets encryption values PORT DATABASE_URL runtime build variables key',
+    sections: [
+      {
+        id: 'save',
+        title: 'Add a variable',
+        content: (
+          <>
+            <p>
+              Open the project's <strong>Environment</strong> tab. Enter a name, such as{' '}
+              <code>DATABASE_URL</code>, and a single-line value, then select{' '}
+              <strong>Save variable</strong>.
+            </p>
+            <p>
+              Names use letters, numbers, and underscores, and must start with a letter or
+              underscore. Saved values are encrypted at rest and never returned by the management
+              API.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'bulk-import',
+        title: 'Import a .env file',
+        content: (
+          <>
+            <p>
+              Expand <strong>Import from .env</strong> in the Environment tab and paste up to 100
+              variables, one per line. Select <strong>Save variables</strong> to encrypt and save
+              the entire batch.
+            </p>
+            <Code language=".env">
+              {'NODE_ENV=production\nPORT=8080\nDATABASE_URL="your connection string"'}
+            </Code>
+            <p>
+              Comments, optional export prefixes, empty values, and quoted single-line values are
+              supported. Variable references such as <code>{'${PORT}'}</code> are kept as literal
+              text. Duplicate names and invalid entries reject the entire batch with a line number.
+              Errors do not echo secret values.
+            </p>
+            <p>
+              Existing variables are protected by default. Enable{' '}
+              <strong>Replace variables that already exist</strong> to update matching names; other
+              saved variables are kept. The editor clears after a successful save, and saved values
+              remain hidden. Deploy again to apply changes.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'apply',
+        title: 'Apply changes with a deployment',
+        content: (
+          <>
+            <p>
+              Changing or deleting a variable affects future deployments. Select{' '}
+              <strong>Deploy</strong> to run the application with the new configuration.
+            </p>
+            <p>
+              Queued deployments keep a snapshot of their original settings and values. Restart and
+              rollback use the retained version's snapshot rather than current project variables.
+            </p>
+            <Note title="Build and runtime availability">
+              Single-application variables are injected when the container starts and are also
+              passed to Railpack builds. Frontend build variables can become public in generated
+              assets. Dockerfile builds do not receive saved variables. Compose variables can be
+              referenced with <code>{'${NAME}'}</code> in the manifest.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'protect',
+        title: 'Protect your workspace secrets',
+        content: (
+          <>
+            <p>
+              Keep your private <code>.env</code> out of version control. Back up{' '}
+              <code>ForgeDock__SecretKey</code> with your database; existing encrypted values
+              require the same key to decrypt.
+            </p>
+            <p>
+              Known project secret values are redacted from persisted logs. Avoid making your
+              application print secrets or encode them into log output.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'deployments',
+    title: 'Deployments & rollback',
+    group: 'OPERATE',
+    summary: 'Understand each deployment, inspect failures, and restore a version.',
+    keywords: 'history stages logs failed running stopped restart rollback health previous image',
+    sections: [
+      {
+        id: 'lifecycle',
+        title: 'Follow the deployment lifecycle',
+        content: (
+          <>
+            <p>A fresh deployment progresses through these stages:</p>
+            <Code language="Lifecycle">
+              {
+                'Queued \u2192 Preparing \u2192 Cloning \u2192 Building\n       \u2192 Starting \u2192 HealthChecking \u2192 Routing \u2192 Running'
+              }
+            </Code>
+            <p>
+              Deployment history preserves the source commit, timestamps, state, and logs. Select a
+              history item to inspect that version. A failure includes a reason and leaves the
+              previous single-application route in place.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'logs',
+        title: 'Read build and application logs',
+        content: (
+          <>
+            <p>
+              The log panel streams deployment output as the worker runs. Auto builds include a
+              builder selection message so you can tell whether Dockerfile or Railpack was used.
+            </p>
+            <p>
+              Once a single application is running, the worker checks it periodically and collects
+              recent container logs. Compose deployments also show service status.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'rollback',
+        title: 'Roll back to a retained version',
+        content: (
+          <>
+            <p>
+              Choose an earlier successful deployment in history and select{' '}
+              <strong>Roll back</strong>. ForgeDock starts its retained image with the original
+              configuration and variables, checks health, and updates the route.
+            </p>
+            <p>
+              Rollback skips cloning and building. It requires the retained image to still exist on
+              the worker. Database contents and schema changes are not rolled back.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'controls',
+        title: 'Restart, stop, and delete',
+        content: (
+          <>
+            <ul>
+              <li>
+                <strong>Restart</strong> creates a deployment from the active retained image and its
+                saved settings.
+              </li>
+              <li>
+                <strong>Stop</strong> stops the active application and removes its route.
+              </li>
+              <li>
+                <strong>Delete</strong> removes project containers, routes, variables, and
+                deployment history. Compose named data volumes are preserved.
+              </li>
+            </ul>
+            <p>
+              Retained images and source directories need separate operator cleanup. Wait for queued
+              or active deployments to finish before stopping or deleting a project.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'metrics',
+    title: 'Application metrics',
+    group: 'OPERATE',
+    summary: 'Understand resource usage, network traffic, and service uptime.',
+    keywords:
+      'metrics monitoring cpu memory ram network disk io uptime processes charts graphs resource usage performance',
+    sections: [
+      {
+        id: 'overview',
+        title: 'See how your application is running',
+        content: (
+          <>
+            <p>
+              Open a project and select <strong>Metrics</strong>. View CPU and memory usage,
+              received and sent traffic, and resource history. Metrics work with Auto, Dockerfile,
+              and Compose deployments.
+            </p>
+            <p>
+              The service table includes memory limits, container uptime, processes, network totals,
+              and disk I/O totals. Compose projects can show all services together or filter to one
+              service.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'history',
+        title: 'Explore your usage history',
+        content: (
+          <>
+            <p>
+              Choose <strong>Last hour</strong>, <strong>Last 6 hours</strong>, or{' '}
+              <strong>Last 24 hours</strong>. Hover over a chart to inspect a sample. Project CPU
+              and memory charts sum service usage before averaging it within each chart interval.
+            </p>
+            <p>
+              CPU is measured relative to one core: 100% means one core, so multi-core applications
+              and service totals can exceed 100%. Memory reflects Docker’s Linux measurement with
+              filesystem cache excluded. The displayed limit is the container’s available memory,
+              which can be the host limit when no explicit Compose limit is set.
+            </p>
+            <p>
+              Network charts show bytes per second calculated between consecutive samples. Network
+              and disk totals in the table are cumulative since the container started. They reset
+              when its counters reset. Processes include kernel threads.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'collection',
+        title: 'Collection and data freshness',
+        content: (
+          <>
+            <p>
+              A separate collector in the worker samples running, managed application containers
+              roughly every 30 seconds, independently of builds. The dashboard refreshes every 10
+              seconds. History is stored in PostgreSQL and retained for 24 hours; expired samples
+              are cleaned up every 15 minutes while the worker runs.
+            </p>
+            <p>
+              The dashboard labels old samples as stale. If collection is interrupted, charts show
+              gaps instead of implying zero usage. Traffic rates are unavailable for the first
+              sample, after a restart or counter reset, and across long collection gaps.
+            </p>
+            <Note title="After a deployment">
+              The latest service table follows the active deployment. Historical charts include
+              prior versions within the selected time range. Stopped applications keep their recent
+              history, but do not generate new samples.
+            </Note>
+          </>
+        ),
+      },
+      {
+        id: 'setup',
+        title: 'Start collecting metrics',
+        content: (
+          <>
+            <p>Run the startup script to apply migrations and start the API and worker:</p>
+            <Code>{'./scripts/start-local.sh'}</Code>
+            <p>
+              For an already-running workspace, apply <code>make migrate</code> and restart the API
+              and worker after updating. Deploy an application and allow two samples for network
+              rates to appear.
+            </p>
+            <p>
+              If samples remain stale, check the worker logs, Docker access, and PostgreSQL
+              connectivity. No extra monitoring server is required. Request counts, HTTP latency,
+              alerting, and external metrics exporters are not included.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'health-routing',
+    title: 'Health checks & routing',
+    group: 'OPERATE',
+    summary: 'Send traffic only after your application is ready.',
+    keywords: 'port PORT 0.0.0.0 localhost nginx url route proxy health 60 seconds',
+    sections: [
+      {
+        id: 'health',
+        title: 'Configure a reliable health endpoint',
+        content: (
+          <>
+            <p>
+              Your health path must be a local absolute HTTP path, such as <code>/health</code>.
+              Make it respond successfully when the application is ready to serve traffic.
+            </p>
+            <p>
+              For single applications, ForgeDock checks the container is running and retries HTTP
+              checks for approximately 60 seconds. If the container exits or the check times out,
+              the deployment fails.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'ports',
+        title: 'Match the application port',
+        content: (
+          <>
+            <p>
+              The container port in Settings must match the server's actual listening port. Bind
+              your server to <code>0.0.0.0</code>. Auto mode supplies a default runtime{' '}
+              <code>PORT</code>; an explicitly saved PORT takes precedence.
+            </p>
+            <div className="docs-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Local service</th>
+                    <th>Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Dashboard & documentation</td>
+                    <td>
+                      <code>127.0.0.1:5173</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Management API</td>
+                    <td>
+                      <code>127.0.0.1:5080</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Application proxy</td>
+                    <td>
+                      <code>127.0.0.1:8088</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>PostgreSQL</td>
+                    <td>
+                      <code>127.0.0.1:5432</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        ),
+      },
+      {
+        id: 'routes',
+        title: 'Open your application route',
+        content: (
+          <>
+            <p>Each project gets an HTTP route based on its ID:</p>
+            <Code language="text">{'http://<project-id-without-hyphens>.localhost:8088'}</Code>
+            <p>
+              Use the application link in the dashboard after the deployment reaches Running. Local
+              service ports bind to loopback. Add a custom domain in the Domains tab for public
+              HTTPS. Configure your server first; the local URL remains available.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
   ...platformArticles(Code),
-  { slug: 'troubleshooting', title: 'Troubleshooting', group: 'OPERATE', summary: 'Find the failing stage and get back to shipping.', keywords: 'errors failure docker unavailable missing railpack health timeout install buildkit database migrations', sections: [
-    { id: 'console', title: 'Inspect the running application', content: <><p>Open your project's <strong>Console</strong> tab to run shell commands in the active application container. Compose projects target the public service. Each command starts a fresh shell with the container's configured user; use <code>cd /app &amp;&amp; ls</code> to change directory and inspect files in one command.</p><p>The console shows output and exit codes, with up to 64 KiB per command. Use the up and down arrow keys to recall commands. The container image needs <code>/bin/sh</code>; interactive programs are not supported. Requests wait up to 30 seconds, and commands may continue inside the container after a timeout.</p><p>Start the application and wait for deployments or project operations to finish before using the console. Containers with host access or bind mounts cannot use it. Commands can change application files and data; changes outside persistent volumes disappear on redeploy.</p></> },
-    { id: 'startup', title: 'The workspace will not start', content: <><p>Check that the required commands are installed, Docker is running, and your user can access it:</p><Code>{"dotnet --version\nnode --version\ndocker info"}</Code><p>Make sure ports 5173, 5080, 8088, and 5432 are available. The startup script preserves your existing <code>.env</code>; verify it contains a valid connection string, token, secret key, and absolute runtime paths.</p></> },
-    { id: 'build', title: 'An automatic build fails', content: <><p>Open deployment logs and find the first error. If Railpack is missing or BuildKit is unavailable, run <code>make railpack</code> on the worker host and retry.</p><Code>{"docker logs --tail 100 forgedock-buildkit"}</Code><p>If runtime detection fails, check the Root directory setting: applications inside backend or frontend folders need that folder selected. Check Railpack's language guide. Add a start command when the application has a custom entrypoint. If your build needs secret values, remember that saved ForgeDock variables are available to Railpack builds and at runtime.</p></> },
-    { id: 'health', title: 'The application never becomes healthy', content: <><ul><li>Check that the server starts successfully and stays running.</li><li>Bind to <code>0.0.0.0</code> and match the configured container port.</li><li>Ensure the health path responds successfully without authentication.</li><li>Check required runtime variables and database connectivity.</li></ul><p>A saved <code>PORT</code> that differs from the container port is a common cause. Deployment logs show whether the container exited or HTTP checks failed.</p></> },
-    { id: 'data', title: 'Migrations or encrypted values fail', content: <><p>Run <code>make migrate</code> with PostgreSQL running and a correct connection string. Back up the database and your original secret key together.</p><p>If you replaced <code>ForgeDock__SecretKey</code>, restore the original key to read existing encrypted values. Do not delete the PostgreSQL data volume to resolve a startup error.</p></> },
-  ]},
+  {
+    slug: 'troubleshooting',
+    title: 'Troubleshooting',
+    group: 'OPERATE',
+    summary: 'Find the failing stage and get back to shipping.',
+    keywords:
+      'errors failure docker unavailable missing railpack health timeout install buildkit database migrations',
+    sections: [
+      {
+        id: 'console',
+        title: 'Inspect the running application',
+        content: (
+          <>
+            <p>
+              Open your project's <strong>Console</strong> tab to run shell commands in the active
+              application container. Compose projects target the public service. Each command starts
+              a fresh shell with the container's configured user; use{' '}
+              <code>cd /app &amp;&amp; ls</code> to change directory and inspect files in one
+              command.
+            </p>
+            <p>
+              The console shows output and exit codes, with up to 64 KiB per command. Use the up and
+              down arrow keys to recall commands. The container image needs <code>/bin/sh</code>;
+              interactive programs are not supported. Requests wait up to 30 seconds, and commands
+              may continue inside the container after a timeout.
+            </p>
+            <p>
+              Start the application and wait for deployments or project operations to finish before
+              using the console. Containers with host access or bind mounts cannot use it. Commands
+              can change application files and data; changes outside persistent volumes disappear on
+              redeploy.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'startup',
+        title: 'The workspace will not start',
+        content: (
+          <>
+            <p>
+              Check that the required commands are installed, Docker is running, and your user can
+              access it:
+            </p>
+            <Code>{'dotnet --version\nnode --version\ndocker info'}</Code>
+            <p>
+              Make sure ports 5173, 5080, 8088, and 5432 are available. The startup script preserves
+              your existing <code>.env</code>; verify it contains a valid connection string, token,
+              secret key, and absolute runtime paths.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'build',
+        title: 'An automatic build fails',
+        content: (
+          <>
+            <p>
+              Open deployment logs and find the first error. If Railpack is missing or BuildKit is
+              unavailable, run <code>make railpack</code> on the worker host and retry.
+            </p>
+            <Code>{'docker logs --tail 100 forgedock-buildkit'}</Code>
+            <p>
+              If runtime detection fails, check the Root directory setting: applications inside
+              backend or frontend folders need that folder selected. Check Railpack's language
+              guide. Add a start command when the application has a custom entrypoint. If your build
+              needs secret values, remember that saved ForgeDock variables are available to Railpack
+              builds and at runtime.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'health',
+        title: 'The application never becomes healthy',
+        content: (
+          <>
+            <ul>
+              <li>Check that the server starts successfully and stays running.</li>
+              <li>
+                Bind to <code>0.0.0.0</code> and match the configured container port.
+              </li>
+              <li>Ensure the health path responds successfully without authentication.</li>
+              <li>Check required runtime variables and database connectivity.</li>
+            </ul>
+            <p>
+              A saved <code>PORT</code> that differs from the container port is a common cause.
+              Deployment logs show whether the container exited or HTTP checks failed.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: 'data',
+        title: 'Migrations or encrypted values fail',
+        content: (
+          <>
+            <p>
+              Run <code>make migrate</code> with PostgreSQL running and a correct connection string.
+              Back up the database and your original secret key together.
+            </p>
+            <p>
+              If you replaced <code>ForgeDock__SecretKey</code>, restore the original key to read
+              existing encrypted values. Do not delete the PostgreSQL data volume to resolve a
+              startup error.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
 ];
 
 export function Docs() {
@@ -125,44 +1524,268 @@ export function Docs() {
   const [activeSection, setActiveSection] = useState('');
   const search = useRef<HTMLInputElement>(null);
   const slug = pathname.replace(/^\/docs\/?/, '').replace(/\/$/, '');
-  const article = articles.find(item => item.slug === slug);
-  const index = articles.findIndex(item => item.slug === slug);
+  const article = articles.find((item) => item.slug === slug);
+  const index = articles.findIndex((item) => item.slug === slug);
   useEffect(() => {
-    const onNavigation = () => { setPathname(window.location.pathname); setQuery(''); setMenuOpen(false); };
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); search.current?.focus(); }
-      if (event.key === 'Escape') { setQuery(''); setMenuOpen(false); search.current?.blur(); }
+    const onNavigation = () => {
+      setPathname(window.location.pathname);
+      setQuery('');
+      setMenuOpen(false);
     };
-    window.addEventListener('popstate', onNavigation); window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('popstate', onNavigation); window.removeEventListener('keydown', onKey); };
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        search.current?.focus();
+      }
+      if (event.key === 'Escape') {
+        setQuery('');
+        setMenuOpen(false);
+        search.current?.blur();
+      }
+    };
+    window.addEventListener('popstate', onNavigation);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('popstate', onNavigation);
+      window.removeEventListener('keydown', onKey);
+    };
   }, []);
-  useEffect(() => { document.title = `${article?.title ?? 'Page not found'} · ForgeDock Docs`; }, [article]);
+  useEffect(() => {
+    document.title = `${article?.title ?? 'Page not found'} · ForgeDock Docs`;
+  }, [article]);
   useEffect(() => {
     if (!article) return;
     const updateSection = () => {
-      const current = [...article.sections].reverse().find(section => {
+      const current = [...article.sections].reverse().find((section) => {
         const element = document.getElementById(section.id);
         return element && element.getBoundingClientRect().top <= 160;
       });
-      const atBottom = window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      setActiveSection(atBottom ? article.sections[article.sections.length - 1].id : current?.id ?? article.sections[0].id);
+      const atBottom =
+        window.scrollY > 0 &&
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setActiveSection(
+        atBottom
+          ? article.sections[article.sections.length - 1].id
+          : (current?.id ?? article.sections[0].id),
+      );
     };
     updateSection();
     window.addEventListener('scroll', updateSection, { passive: true });
     return () => window.removeEventListener('scroll', updateSection);
   }, [article]);
-  const matches = query.trim() ? articles.filter(item => `${item.title} ${item.summary} ${item.keywords} ${item.sections.map(section => section.title).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())) : [];
-  return <div className="docs-site">
-    <a className="docs-skip" href="#docs-content">Skip to content</a>
-    <header className="docs-header"><Link slug="" className="docs-brand"><svg className="docs-logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" strokeWidth="1.8"/><path d="M16 7 25 16 16 25 7 16Z" fill="currentColor" opacity=".8"/></svg>ForgeDock<span className="docs-brand-divider"/><span className="docs-brand-label">Docs</span></Link>
-      <div className="docs-search"><span aria-hidden="true">⌕</span><input ref={search} aria-label="Search documentation" placeholder="Search documentation…" value={query} onChange={event => setQuery(event.target.value)} aria-controls={query.trim() ? 'docs-search-results' : undefined} /><kbd>⌘ / Ctrl K</kbd>
-        {query.trim() && <div id="docs-search-results" className="docs-results" role="region" aria-label="Search results"><span className="docs-results-label">{matches.length} {matches.length === 1 ? 'RESULT' : 'RESULTS'}</span>{matches.map(item => <Link key={item.slug} slug={item.slug}><strong>{item.title}</strong><span>{item.summary}</span></Link>)}{!matches.length && <p>No pages found. Try “build”, “port”, or “environment”.</p>}</div>}
-      </div><a className="docs-dashboard" href="/" onClick={event => navigate(event, '/')}>Open dashboard <span aria-hidden="true">↗</span></a><button className="docs-menu-toggle" aria-label="Toggle documentation navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>☰</button>
-    </header>
-    <div className="docs-layout"><nav className={'docs-sidebar ' + (menuOpen ? 'is-open' : '')} aria-label="Documentation"><div className="docs-sidebar-top"><span>Documentation<small>Learn. Build. Ship.</small></span></div>{['GETTING STARTED', 'BUILD & DEPLOY', 'OPERATE'].map(group => <div className="docs-nav-group" key={group}><h2>{group}</h2>{articles.filter(item => item.group === group).map(item => <Link key={item.slug} slug={item.slug} className={item.slug === slug ? 'is-active' : ''}><span className="docs-nav-dot" aria-hidden="true"/>{item.title}</Link>)}</div>)}<div className="docs-sidebar-bottom"><span className="docs-status-dot"/>Self-hosted. In your control.<small>ForgeDock · Early release</small></div></nav>
-    <main id="docs-content" className="docs-main" tabIndex={-1}>{article ? <><div className="docs-breadcrumb"><Link slug="">Documentation</Link><span>/</span><span>{article.title}</span></div><div className={'docs-article-heading ' + (!slug ? 'docs-hero' : '')}><span className="docs-eyebrow">{slug ? article.group : 'THE FORGEDOCK HANDBOOK'}</span><h1>{slug ? article.title : <>From repository<br/>to <em>running.</em></>}</h1><p>{slug ? article.summary : 'Everything you need to build, deploy, and operate applications on your own infrastructure.'}</p>{!slug && <div className="docs-hero-actions"><Link slug="quickstart" className="docs-primary-link">Start building <span aria-hidden="true">→</span></Link><Link slug="automatic-builds">Explore automatic builds <span aria-hidden="true">↗</span></Link></div>}</div>
-      <article className="docs-article">{article.sections.map(section => <section key={section.id} id={section.id}><h2><a href={'#' + section.id}>{section.title}<span aria-hidden="true">#</span></a></h2>{section.content}</section>)}</article>
-      <div className="docs-feedback"><span>Ready for the next step?</span><a href="/" onClick={event => navigate(event, '/')}>Open your workspace →</a></div><nav className="docs-pagination" aria-label="Adjacent documentation pages">{index > 0 ? <Link slug={articles[index - 1].slug}><span>← Previous</span><strong>{articles[index - 1].title}</strong></Link> : <div/>}{index < articles.length - 1 && <Link slug={articles[index + 1].slug}><span>Next →</span><strong>{articles[index + 1].title}</strong></Link>}</nav><footer className="docs-footer"><span>◈ ForgeDock</span><span>Built for the way you ship.</span></footer></> : <div className="docs-not-found"><span className="docs-eyebrow">404 · DOCUMENTATION</span><h1>This page sailed away.</h1><p>That documentation page does not exist. Find a guide in the sidebar or start at the introduction.</p><Link slug="" className="docs-primary-link">Back to documentation →</Link></div>}</main>
-    {article && <nav className="docs-toc" aria-label="On this page"><span>ON THIS PAGE</span>{article.sections.map(section => <a href={'#' + section.id} key={section.id} className={activeSection === section.id ? 'is-active' : undefined} aria-current={activeSection === section.id ? 'location' : undefined}>{section.title.replace(/^\d\. /, '')}</a>)}<div className="docs-toc-callout"><span aria-hidden="true">◇</span><strong>Less setup.<br/>More shipping.</strong><p>No Dockerfile? Start with an automatic build.</p><Link slug="automatic-builds">See how it works →</Link></div></nav>}</div>
-  </div>;
+  const matches = query.trim()
+    ? articles.filter((item) =>
+        `${item.title} ${item.summary} ${item.keywords} ${item.sections.map((section) => section.title).join(' ')}`
+          .toLowerCase()
+          .includes(query.trim().toLowerCase()),
+      )
+    : [];
+  return (
+    <div className="docs-site">
+      <a className="docs-skip" href="#docs-content">
+        Skip to content
+      </a>
+      <header className="docs-header">
+        <Link slug="" className="docs-brand">
+          <svg className="docs-logo" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M16 7 25 16 16 25 7 16Z" fill="currentColor" opacity=".8" />
+          </svg>
+          ForgeDock
+          <span className="docs-brand-divider" />
+          <span className="docs-brand-label">Docs</span>
+        </Link>
+        <div className="docs-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            ref={search}
+            aria-label="Search documentation"
+            placeholder="Search documentation…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-controls={query.trim() ? 'docs-search-results' : undefined}
+          />
+          <kbd>⌘ / Ctrl K</kbd>
+          {query.trim() && (
+            <div
+              id="docs-search-results"
+              className="docs-results"
+              role="region"
+              aria-label="Search results"
+            >
+              <span className="docs-results-label">
+                {matches.length} {matches.length === 1 ? 'RESULT' : 'RESULTS'}
+              </span>
+              {matches.map((item) => (
+                <Link key={item.slug} slug={item.slug}>
+                  <strong>{item.title}</strong>
+                  <span>{item.summary}</span>
+                </Link>
+              ))}
+              {!matches.length && <p>No pages found. Try “build”, “port”, or “environment”.</p>}
+            </div>
+          )}
+        </div>
+        <a className="docs-dashboard" href="/" onClick={(event) => navigate(event, '/')}>
+          Open dashboard <span aria-hidden="true">↗</span>
+        </a>
+        <button
+          className="docs-menu-toggle"
+          aria-label="Toggle documentation navigation"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          ☰
+        </button>
+      </header>
+      <div className="docs-layout">
+        <nav className={'docs-sidebar ' + (menuOpen ? 'is-open' : '')} aria-label="Documentation">
+          <div className="docs-sidebar-top">
+            <span>
+              Documentation<small>Learn. Build. Ship.</small>
+            </span>
+          </div>
+          {['GETTING STARTED', 'BUILD & DEPLOY', 'OPERATE'].map((group) => (
+            <div className="docs-nav-group" key={group}>
+              <h2>{group}</h2>
+              {articles
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <Link
+                    key={item.slug}
+                    slug={item.slug}
+                    className={item.slug === slug ? 'is-active' : ''}
+                  >
+                    <span className="docs-nav-dot" aria-hidden="true" />
+                    {item.title}
+                  </Link>
+                ))}
+            </div>
+          ))}
+          <div className="docs-sidebar-bottom">
+            <span className="docs-status-dot" />
+            Self-hosted. In your control.<small>ForgeDock · Early release</small>
+          </div>
+        </nav>
+        <main id="docs-content" className="docs-main" tabIndex={-1}>
+          {article ? (
+            <>
+              <div className="docs-breadcrumb">
+                <Link slug="">Documentation</Link>
+                <span>/</span>
+                <span>{article.title}</span>
+              </div>
+              <div className={'docs-article-heading ' + (!slug ? 'docs-hero' : '')}>
+                <span className="docs-eyebrow">
+                  {slug ? article.group : 'THE FORGEDOCK HANDBOOK'}
+                </span>
+                <h1>
+                  {slug ? (
+                    article.title
+                  ) : (
+                    <>
+                      From repository
+                      <br />
+                      to <em>running.</em>
+                    </>
+                  )}
+                </h1>
+                <p>
+                  {slug
+                    ? article.summary
+                    : 'Everything you need to build, deploy, and operate applications on your own infrastructure.'}
+                </p>
+                {!slug && (
+                  <div className="docs-hero-actions">
+                    <Link slug="quickstart" className="docs-primary-link">
+                      Start building <span aria-hidden="true">→</span>
+                    </Link>
+                    <Link slug="automatic-builds">
+                      Explore automatic builds <span aria-hidden="true">↗</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <article className="docs-article">
+                {article.sections.map((section) => (
+                  <section key={section.id} id={section.id}>
+                    <h2>
+                      <a href={'#' + section.id}>
+                        {section.title}
+                        <span aria-hidden="true">#</span>
+                      </a>
+                    </h2>
+                    {section.content}
+                  </section>
+                ))}
+              </article>
+              <div className="docs-feedback">
+                <span>Ready for the next step?</span>
+                <a href="/" onClick={(event) => navigate(event, '/')}>
+                  Open your workspace →
+                </a>
+              </div>
+              <nav className="docs-pagination" aria-label="Adjacent documentation pages">
+                {index > 0 ? (
+                  <Link slug={articles[index - 1].slug}>
+                    <span>← Previous</span>
+                    <strong>{articles[index - 1].title}</strong>
+                  </Link>
+                ) : (
+                  <div />
+                )}
+                {index < articles.length - 1 && (
+                  <Link slug={articles[index + 1].slug}>
+                    <span>Next →</span>
+                    <strong>{articles[index + 1].title}</strong>
+                  </Link>
+                )}
+              </nav>
+              <footer className="docs-footer">
+                <span>◈ ForgeDock</span>
+                <span>Built for the way you ship.</span>
+              </footer>
+            </>
+          ) : (
+            <div className="docs-not-found">
+              <span className="docs-eyebrow">404 · DOCUMENTATION</span>
+              <h1>This page sailed away.</h1>
+              <p>
+                That documentation page does not exist. Find a guide in the sidebar or start at the
+                introduction.
+              </p>
+              <Link slug="" className="docs-primary-link">
+                Back to documentation →
+              </Link>
+            </div>
+          )}
+        </main>
+        {article && (
+          <nav className="docs-toc" aria-label="On this page">
+            <span>ON THIS PAGE</span>
+            {article.sections.map((section) => (
+              <a
+                href={'#' + section.id}
+                key={section.id}
+                className={activeSection === section.id ? 'is-active' : undefined}
+                aria-current={activeSection === section.id ? 'location' : undefined}
+              >
+                {section.title.replace(/^\d\. /, '')}
+              </a>
+            ))}
+            <div className="docs-toc-callout">
+              <span aria-hidden="true">◇</span>
+              <strong>
+                Less setup.
+                <br />
+                More shipping.
+              </strong>
+              <p>No Dockerfile? Start with an automatic build.</p>
+              <Link slug="automatic-builds">See how it works →</Link>
+            </div>
+          </nav>
+        )}
+      </div>
+    </div>
+  );
 }

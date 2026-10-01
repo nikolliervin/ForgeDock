@@ -38,3 +38,14 @@ The retained employee browser check expects the employee-management Compose proj
 ### Worker private-file build fix
 
 The shared `PrivateFiles` helper is public so the worker can create scheduled-job environment files through Infrastructure. It uses exclusive file creation and owner-only read/write permissions on Unix. Verified with a solution build (zero warnings/errors) and the default test suite (191 passed, 15 integration tests skipped).
+
+### Formatting and review checks
+
+Frontend formatting is pinned to Prettier 3.6.2. Run `npm --prefix web run format:check` and `npm --prefix web run build`. Authored backend sources were formatted with CSharpier 1.2.1; generated migrations are excluded. Run `dotnet test ForgeDock.sln`. For isolated real HTTP/PostgreSQL and Docker task checks, run:
+
+```bash
+FORGEDOCK_DOCKER_TESTS=1 bash scripts/with-env.sh dotnet test tests/ForgeDock.Tests --filter FullyQualifiedName~ManagementApiTests
+FORGEDOCK_DOCKER_TESTS=1 bash scripts/with-env.sh dotnet test tests/ForgeDock.Tests --filter FullyQualifiedName~ScheduledJobTests
+```
+
+Run Docker integration suites sequentially because fixtures reload the shared local proxy. Browser fixture tests use intercepted API responses and need only the Vite server; live deployment tests require the API, worker, and local infrastructure.

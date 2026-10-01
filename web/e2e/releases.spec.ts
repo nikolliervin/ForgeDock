@@ -10,7 +10,12 @@ test('environment grouping and confirmed release promotion', async ({ page }) =>
   });
   await page.goto(`/projects/${id}/releases`); await page.getByLabel('Management token').fill('release-test-token'); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByLabel('Application group', { exact: true }).fill('my-app'); await page.getByLabel('Environment name', { exact: true }).fill('production'); await page.getByRole('button', { name: 'Save environment group' }).click();
-  await page.getByLabel('Source release', { exact: true }).selectOption('release-one'); await page.getByRole('button', { name: 'Promote release', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByLabel('Source release', { exact: true }).selectOption('release-one');
+  await page.getByLabel('Application group', { exact: true }).fill('unsaved-group');
+  await expect(page.getByRole('button', { name: 'Promote release', exact: true })).toBeDisabled();
+  await page.getByLabel('Application group', { exact: true }).fill('my-app'); await page.getByRole('button', { name: 'Promote release', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('production'); expect(writes.some(w => w.path.endsWith('/promote'))).toBe(false);
   await page.getByRole('dialog').getByRole('button', { name: 'Promote release', exact: true }).click();
   await expect.poll(() => writes.some(w => w.path.endsWith('/promote'))).toBe(true); expect(writes.find(w => w.path.endsWith('/promote')).body).toEqual({ sourceDeploymentId: 'release-one', confirm: true });

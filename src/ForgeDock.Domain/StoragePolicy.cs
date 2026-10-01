@@ -1,4 +1,5 @@
 namespace ForgeDock.Domain;
+
 public sealed class StoragePolicy
 {
     public int Id { get; set; } = 1;
@@ -9,6 +10,7 @@ public sealed class StoragePolicy
     public int OrphanRetentionDays { get; set; } = 7;
     public DateTimeOffset? LastCleanupAt { get; set; }
 }
+
 public sealed class StorageCleanup
 {
     public Guid Id { get; set; } = Guid.NewGuid();

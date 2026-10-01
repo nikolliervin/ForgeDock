@@ -1,4 +1,5 @@
 namespace ForgeDock.Domain;
+
 public sealed class DeploymentHook
 {
     public Guid Id { get; set; } = Guid.NewGuid();

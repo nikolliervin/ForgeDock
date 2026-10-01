@@ -71,3 +71,5 @@ Enable **GitHub auto-deploy** in a project's Settings, then add its payload URL 
 - [Project templates](docs/PROJECT_TEMPLATES.md): editable stack defaults and downloadable starter repositories.
 
 All six guides are also available in the built-in documentation. Apply migrations and restart the API and worker after updating the backend; `./scripts/start-local.sh` performs those steps on startup.
+
+Backend and frontend design notes: [architecture review](docs/ARCHITECTURE_REVIEW.md). Application tasks: [scheduled jobs](docs/SCHEDULED_JOBS.md).

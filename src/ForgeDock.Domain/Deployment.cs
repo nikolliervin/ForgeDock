@@ -1,6 +1,19 @@
 namespace ForgeDock.Domain;
 
-public enum DeploymentState { Queued, Preparing, Cloning, Building, Starting, HealthChecking, Routing, Running, Failed, Stopped, Cancelled }
+public enum DeploymentState
+{
+    Queued,
+    Preparing,
+    Cloning,
+    Building,
+    Starting,
+    HealthChecking,
+    Routing,
+    Running,
+    Failed,
+    Stopped,
+    Cancelled,
+}
 
 public sealed class Deployment
 {
@@ -29,6 +42,10 @@ public sealed class Deployment
     public DateTimeOffset? AutoRollbackTriggeredAt { get; set; }
     public Guid? RollbackSourceId { get; set; }
 
+    /// <summary>
+    /// Enforces the deployment state machine and records stage/timing information. Failure requires a
+    /// reason; retained-image replays alone may skip cloning and building.
+    /// </summary>
     public void TransitionTo(DeploymentState next, string? error = null)
     {
         var allowed = (State, next) switch
@@ -36,20 +53,34 @@ public sealed class Deployment
             (DeploymentState.Queued, DeploymentState.Preparing) => true,
             (DeploymentState.Queued, DeploymentState.Cancelled) => true,
             (DeploymentState.Preparing, DeploymentState.Cloning) => true,
-            (DeploymentState.Preparing, DeploymentState.Starting) when RollbackSourceId.HasValue => true,
+            (DeploymentState.Preparing, DeploymentState.Starting) when RollbackSourceId.HasValue =>
+                true,
             (DeploymentState.Cloning, DeploymentState.Building) => true,
             (DeploymentState.Building, DeploymentState.Starting) => true,
             (DeploymentState.Starting, DeploymentState.HealthChecking) => true,
             (DeploymentState.HealthChecking, DeploymentState.Routing) => true,
             (DeploymentState.Routing, DeploymentState.Running) => true,
             (DeploymentState.Running, DeploymentState.Stopped) => true,
-            (_, DeploymentState.Failed) when State is not (DeploymentState.Failed or DeploymentState.Stopped or DeploymentState.Cancelled) => true,
-            _ => false
+            (_, DeploymentState.Failed)
+                when State
+                    is not (
+                        DeploymentState.Failed
+                        or DeploymentState.Stopped
+                        or DeploymentState.Cancelled
+                    ) => true,
+            _ => false,
         };
-        if (!allowed) throw new InvalidOperationException($"Invalid deployment transition: {State} → {next}.");
+        if (!allowed)
+            throw new InvalidOperationException(
+                $"Invalid deployment transition: {State} → {next}."
+            );
         if (next == DeploymentState.Failed && string.IsNullOrWhiteSpace(error))
-            throw new ArgumentException("A failed deployment requires an actionable error.", nameof(error));
-        if (next == DeploymentState.Preparing) StartedAt = DateTimeOffset.UtcNow;
+            throw new ArgumentException(
+                "A failed deployment requires an actionable error.",
+                nameof(error)
+            );
+        if (next == DeploymentState.Preparing)
+            StartedAt = DateTimeOffset.UtcNow;
         LastStage = next is DeploymentState.Failed or DeploymentState.Cancelled ? State : next;
         if (next is DeploymentState.Running or DeploymentState.Failed or DeploymentState.Cancelled)
             FinishedAt = DateTimeOffset.UtcNow;

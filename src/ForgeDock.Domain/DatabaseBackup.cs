@@ -1,4 +1,5 @@
 namespace ForgeDock.Domain;
+
 public sealed class DatabaseBackup
 {
     public Guid Id { get; set; } = Guid.NewGuid();

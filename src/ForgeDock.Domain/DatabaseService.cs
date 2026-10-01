@@ -1,5 +1,14 @@
 namespace ForgeDock.Domain;
-public enum DatabaseKind { PostgreSql, Redis, MySql, SqlServer, MongoDb }
+
+public enum DatabaseKind
+{
+    PostgreSql,
+    Redis,
+    MySql,
+    SqlServer,
+    MongoDb,
+}
+
 public sealed class DatabaseService
 {
     public Guid Id { get; set; } = Guid.NewGuid();

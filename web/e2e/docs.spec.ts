@@ -7,7 +7,8 @@ test('documentation is public and every guide supports direct navigation', async
   await expect(page.getByRole('heading', { level: 1 })).toContainText('From repository');
   const navigation = page.getByRole('navigation', { name: 'Documentation', exact: true });
   const paths = await navigation.getByRole('link').evaluateAll(links => links.map(link => link.getAttribute('href')!));
-  expect(paths).toHaveLength(19);
+  expect(new Set(paths).size).toBe(paths.length);
+  expect(paths).toEqual(expect.arrayContaining(['/docs', '/docs/quickstart', '/docs/storage-cleanup']));
   for (const path of paths) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

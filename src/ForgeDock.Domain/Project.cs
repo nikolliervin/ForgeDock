@@ -1,6 +1,11 @@
 namespace ForgeDock.Domain;
 
-public enum DeploymentMode { Dockerfile, Compose, Auto }
+public enum DeploymentMode
+{
+    Dockerfile,
+    Compose,
+    Auto,
+}
 
 public sealed class Project
 {

@@ -1,5 +1,135 @@
-.template-fields{border:0;padding:0;margin:18px 0;min-width:0}.template-note{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:14px;margin-bottom:20px}.form input[type=checkbox]{width:auto;display:inline-block;margin:0 8px 0 0;vertical-align:middle;accent-color:var(--accent)}.form>section{margin-top:28px;padding-top:8px}.form article{margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:8px}.form article h3{margin-top:0}.form article p{overflow-wrap:anywhere}.form h4{margin:22px 0 12px}.form small{color:var(--text-muted)}
-.preview-setup-note{margin:18px 0;padding:18px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}.preview-setup-note h3{margin-top:0}.preview-setup-note ol{padding-left:22px}.preview-setup-note li{margin:12px 0;line-height:1.7;color:var(--text-muted)}
+.template-fields {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+  min-width: 0;
+}
+.template-note {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+.form input[type='checkbox'] {
+  width: auto;
+  display: inline-block;
+  margin: 0 8px 0 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+.form > section {
+  margin-top: 28px;
+  padding-top: 8px;
+}
+.form article {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.form article h3 {
+  margin-top: 0;
+}
+.form article p {
+  overflow-wrap: anywhere;
+}
+.form h4 {
+  margin: 22px 0 12px;
+}
+.form small {
+  color: var(--text-muted);
+}
+.preview-setup-note {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.preview-setup-note h3 {
+  margin-top: 0;
+}
+.preview-setup-note ol {
+  padding-left: 22px;
+}
+.preview-setup-note li {
+  margin: 12px 0;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
 
-.project-settings>h2{font-size:20px}.project-settings>p{margin-bottom:24px}.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px}.settings-column{display:flex;flex-direction:column;gap:24px;min-width:0}.settings-grid .settings-card{max-width:none;width:100%;margin:0;min-width:0}.settings-card>h3,.settings-card>section>h3{margin-top:0;font-size:16px}.settings-grid .settings-card>section{margin-top:0;padding-top:0}.settings-card .webhook-settings{margin-top:0;border-top:0;padding-top:0}.settings-danger{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:24px}.settings-danger h3{margin-top:0}.settings-danger p{margin-bottom:0;max-width:780px}.settings-danger button{flex-shrink:0}@media(max-width:1100px){.settings-grid{grid-template-columns:minmax(0,1fr)}.settings-danger{align-items:flex-start;flex-direction:column}}
-.form label:has(>input[type=checkbox]){display:flex;flex-direction:row;align-items:center;gap:8px}.form label>input[type=checkbox]{flex:0 0 auto;margin:0}
+.project-settings > h2 {
+  font-size: 20px;
+}
+.project-settings > p {
+  margin-bottom: 24px;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
+}
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.settings-grid .settings-card {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  min-width: 0;
+}
+.settings-card > h3,
+.settings-card > section > h3 {
+  margin-top: 0;
+  font-size: 16px;
+}
+.settings-grid .settings-card > section {
+  margin-top: 0;
+  padding-top: 0;
+}
+.settings-card .webhook-settings {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.settings-danger {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.settings-danger h3 {
+  margin-top: 0;
+}
+.settings-danger p {
+  margin-bottom: 0;
+  max-width: 780px;
+}
+.settings-danger button {
+  flex-shrink: 0;
+}
+@media (max-width: 1100px) {
+  .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-danger {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+.form label:has(> input[type='checkbox']) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.form label > input[type='checkbox'] {
+  flex: 0 0 auto;
+  margin: 0;
+}

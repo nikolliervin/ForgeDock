@@ -5,48 +5,111 @@ namespace ForgeDock.Application;
 
 public static partial class ProjectConfiguration
 {
-    public static IReadOnlyList<string> Validate(string name, string repositoryUrl, string branch,
-        string dockerfile, int containerPort, string healthPath, DeploymentMode deploymentMode = DeploymentMode.Dockerfile,
-        string composeFile = "docker-compose.yml", string composeService = "", string buildCommand = "", string startCommand = "", string rootDirectory = ".")
+    /// <summary>
+    /// Validates operator input before it reaches Git, Docker, or routing configuration. URL validation
+    /// limits syntax and protocols; host egress restrictions must still prevent DNS rebinding and
+    /// private-network access.
+    /// </summary>
+    public static IReadOnlyList<string> Validate(
+        string name,
+        string repositoryUrl,
+        string branch,
+        string dockerfile,
+        int containerPort,
+        string healthPath,
+        DeploymentMode deploymentMode = DeploymentMode.Dockerfile,
+        string composeFile = "docker-compose.yml",
+        string composeService = "",
+        string buildCommand = "",
+        string startCommand = "",
+        string rootDirectory = "."
+    )
     {
         var errors = new List<string>();
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 100) errors.Add("Name must contain 1–100 characters.");
-        if (!Uri.TryCreate(repositoryUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
-            !string.IsNullOrEmpty(uri.UserInfo) || uri.IsLoopback || uri.Port != 443 ||
-            System.Net.IPAddress.TryParse(uri.Host, out _) || !uri.Host.Contains('.') ||
-            !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
-            errors.Add("Repository must be a public HTTPS URL without credentials, IP literals, query, or fragment.");
-        if (string.IsNullOrEmpty(branch) || branch.Length > 200 || !BranchPattern().IsMatch(branch) ||
-            branch.Contains("..") || branch.Contains("//") || branch.EndsWith('/') || branch.EndsWith('.') ||
-            branch.EndsWith(".lock", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+            errors.Add("Name must contain 1–100 characters.");
+        if (
+            !Uri.TryCreate(repositoryUrl, UriKind.Absolute, out var uri)
+            || uri.Scheme != "https"
+            || !string.IsNullOrEmpty(uri.UserInfo)
+            || uri.IsLoopback
+            || uri.Port != 443
+            || System.Net.IPAddress.TryParse(uri.Host, out _)
+            || !uri.Host.Contains('.')
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment)
+        )
+            errors.Add(
+                "Repository must be a public HTTPS URL without credentials, IP literals, query, or fragment."
+            );
+        if (
+            string.IsNullOrEmpty(branch)
+            || branch.Length > 200
+            || !BranchPattern().IsMatch(branch)
+            || branch.Contains("..")
+            || branch.Contains("//")
+            || branch.EndsWith('/')
+            || branch.EndsWith('.')
+            || branch.EndsWith(".lock", StringComparison.OrdinalIgnoreCase)
+        )
             errors.Add("Branch must be a valid named Git branch.");
         if (rootDirectory != "." && !IsRepositoryPath(rootDirectory))
             errors.Add("Root directory must be '.' or a relative directory within the repository.");
         if (deploymentMode == DeploymentMode.Compose && rootDirectory != ".")
-            errors.Add("Compose builds use the repository root; configure service contexts in the Compose file.");
-        if (!Enum.IsDefined(deploymentMode)) errors.Add("Unsupported deployment mode.");
-        if (deploymentMode is DeploymentMode.Dockerfile or DeploymentMode.Auto && !IsRepositoryPath(dockerfile))
+            errors.Add(
+                "Compose builds use the repository root; configure service contexts in the Compose file."
+            );
+        if (!Enum.IsDefined(deploymentMode))
+            errors.Add("Unsupported deployment mode.");
+        if (
+            deploymentMode is DeploymentMode.Dockerfile or DeploymentMode.Auto
+            && !IsRepositoryPath(dockerfile)
+        )
             errors.Add("Dockerfile must be a relative path within the repository.");
         if (deploymentMode == DeploymentMode.Compose)
         {
-            if (!IsRepositoryPath(composeFile)) errors.Add("Compose file must be a relative path within the repository.");
-            if (string.IsNullOrEmpty(composeService) || composeService.Length > 100 || !ServicePattern().IsMatch(composeService))
+            if (!IsRepositoryPath(composeFile))
+                errors.Add("Compose file must be a relative path within the repository.");
+            if (
+                string.IsNullOrEmpty(composeService)
+                || composeService.Length > 100
+                || !ServicePattern().IsMatch(composeService)
+            )
                 errors.Add("Select the Compose service to expose through the application route.");
         }
         foreach (var command in new[] { buildCommand, startCommand })
             if (command is null || command.Length > 4096 || command.Any(char.IsControl))
-                errors.Add("Build and start commands must be single-line values up to 4096 characters.");
-        if (containerPort is < 1 or > 65535) errors.Add("Container port must be between 1 and 65535.");
-        if (string.IsNullOrEmpty(healthPath) || !healthPath.StartsWith('/') || healthPath.StartsWith("//") ||
-            healthPath.Contains('\\') || healthPath.Any(char.IsControl)) errors.Add("Health path must be a local absolute HTTP path.");
+                errors.Add(
+                    "Build and start commands must be single-line values up to 4096 characters."
+                );
+        if (containerPort is < 1 or > 65535)
+            errors.Add("Container port must be between 1 and 65535.");
+        if (
+            string.IsNullOrEmpty(healthPath)
+            || !healthPath.StartsWith('/')
+            || healthPath.StartsWith("//")
+            || healthPath.Contains('\\')
+            || healthPath.Any(char.IsControl)
+        )
+            errors.Add("Health path must be a local absolute HTTP path.");
         return errors;
     }
 
-    public static bool IsCommitSha(string? value) => value is not null && value.Length == 40 && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
+    public static bool IsCommitSha(string? value) =>
+        value is not null
+        && value.Length == 40
+        && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
 
-    public static bool IsRepositoryPath(string value) => !string.IsNullOrWhiteSpace(value) &&
-        !Path.IsPathRooted(value) && !value.Contains('\\') &&
-        !value.Split('/').Any(p => p is ".." or "." or "") && !value.Any(char.IsControl);
+    /// <summary>
+    /// Accepts relative repository paths without traversal, empty segments, backslashes, or control
+    /// characters. Runtime resolvers additionally reject symbolic links.
+    /// </summary>
+    public static bool IsRepositoryPath(string value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && !Path.IsPathRooted(value)
+        && !value.Contains('\\')
+        && !value.Split('/').Any(p => p is ".." or "." or "")
+        && !value.Any(char.IsControl);
 
     [GeneratedRegex(@"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")]
     private static partial Regex ServicePattern();

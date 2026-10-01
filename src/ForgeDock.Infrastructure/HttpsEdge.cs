@@ -1,38 +1,76 @@
-using ForgeDock.Application;
-using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using ForgeDock.Application;
 
 namespace ForgeDock.Infrastructure;
 
 public sealed class HttpsEdge(ProcessRunner runner, string runtimePath, DomainSettings settings)
 {
     private string? appliedConfiguration;
+
+    /// <summary>
+    /// Produces deterministic Caddy configuration for verified domains with an explicit 404 catch-all and
+    /// validated settings.
+    /// </summary>
     public static string BuildConfiguration(DomainSettings settings, IEnumerable<string> domains)
     {
-        if (settings.Validate() is { } error) throw new InvalidOperationException(error);
+        if (settings.Validate() is { } error)
+            throw new InvalidOperationException(error);
         var hosts = domains.Distinct().Order(StringComparer.Ordinal).ToArray();
-        if (hosts.Any(host => !DomainName.TryNormalize(host, out var normalized) || normalized != host))
+        if (
+            hosts.Any(host =>
+                !DomainName.TryNormalize(host, out var normalized) || normalized != host
+            )
+        )
             throw new InvalidOperationException("Invalid custom domain in HTTPS configuration.");
         var result = new StringBuilder();
-        result.AppendLine("{").AppendLine("  admin localhost:2019").AppendLine("  persist_config off")
+        result
+            .AppendLine("{")
+            .AppendLine("  admin localhost:2019")
+            .AppendLine("  persist_config off")
             .AppendLine($"  email {DomainSettings.Quote(settings.Email)}")
-            .AppendLine($"  acme_ca {DomainSettings.Quote(settings.AcmeDirectory)}").AppendLine("}")
-            .AppendLine(":80 {").AppendLine("  respond \"Not found\" 404").AppendLine("}");
+            .AppendLine($"  acme_ca {DomainSettings.Quote(settings.AcmeDirectory)}")
+            .AppendLine("}")
+            .AppendLine(":80 {")
+            .AppendLine("  respond \"Not found\" 404")
+            .AppendLine("}");
         foreach (var host in hosts)
-            result.AppendLine($"https://{host} {{").AppendLine("  reverse_proxy forgedock-proxy:80").AppendLine("}");
+            result
+                .AppendLine($"https://{host} {{")
+                .AppendLine("  reverse_proxy forgedock-proxy:80")
+                .AppendLine("}");
         return result.ToString();
     }
 
+    /// <summary>
+    /// Atomically replaces the owned edge configuration, reloads Caddy, and restores the previous file on
+    /// failure. The in-memory cache advances only after a successful reload.
+    /// </summary>
     public async Task ApplyAsync(IEnumerable<string> domains, CancellationToken ct)
     {
         var config = BuildConfiguration(settings, domains);
-        if (config == appliedConfiguration) return;
-        var owned = await runner.RunAsync("docker", ["inspect", "--format", "{{index .Config.Labels \"io.forgedock.managed\"}}", settings.EdgeContainer],
-            null, _ => Task.CompletedTask, ct, inheritEnvironment: false);
-        if (owned != "true") throw new InvalidOperationException("The HTTPS edge container lacks an ownership label.");
+        if (config == appliedConfiguration)
+            return;
+        var owned = await runner.RunAsync(
+            "docker",
+            [
+                "inspect",
+                "--format",
+                "{{index .Config.Labels \"io.forgedock.managed\"}}",
+                settings.EdgeContainer,
+            ],
+            null,
+            _ => Task.CompletedTask,
+            ct,
+            inheritEnvironment: false
+        );
+        if (owned != "true")
+            throw new InvalidOperationException(
+                "The HTTPS edge container lacks an ownership label."
+            );
         var directory = Path.Combine(Path.GetFullPath(runtimePath), "edge", "config");
         Directory.CreateDirectory(directory);
         var file = Path.Combine(directory, "Caddyfile");
@@ -41,19 +79,43 @@ public sealed class HttpsEdge(ProcessRunner runner, string runtimePath, DomainSe
         File.Move(file + ".tmp", file, overwrite: true);
         try
         {
-            await runner.RunAsync("docker", ["exec", settings.EdgeContainer, "caddy", "reload", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"],
-                null, _ => Task.CompletedTask, ct, inheritEnvironment: false);
+            await runner.RunAsync(
+                "docker",
+                [
+                    "exec",
+                    settings.EdgeContainer,
+                    "caddy",
+                    "reload",
+                    "--config",
+                    "/etc/caddy/Caddyfile",
+                    "--adapter",
+                    "caddyfile",
+                ],
+                null,
+                _ => Task.CompletedTask,
+                ct,
+                inheritEnvironment: false
+            );
             appliedConfiguration = config;
         }
         catch
         {
-            if (before is not null) await File.WriteAllTextAsync(file, before, CancellationToken.None);
-            else File.Delete(file);
+            if (before is not null)
+                await File.WriteAllTextAsync(file, before, CancellationToken.None);
+            else
+                File.Delete(file);
             throw;
         }
     }
 
-    public async Task<CertificateStatus> ProbeCertificateAsync(string hostname, CancellationToken ct)
+    /// <summary>
+    /// Inspects the local edge certificate using the requested SNI hostname and a three-second deadline.
+    /// Staging CA certificates can be inspected without being reported as publicly trusted.
+    /// </summary>
+    public async Task<CertificateStatus> ProbeCertificateAsync(
+        string hostname,
+        CancellationToken ct
+    )
     {
         if (!DomainName.TryNormalize(hostname, out var normalized) || normalized != hostname)
             throw new InvalidOperationException("Invalid certificate hostname.");
@@ -64,23 +126,49 @@ public sealed class HttpsEdge(ProcessRunner runner, string runtimePath, DomainSe
         try
         {
             using var client = new TcpClient();
-            await client.ConnectAsync(settings.BindAddress == "::" ? "::1" : "127.0.0.1", settings.HttpsPort, timeout.Token);
-            using var tls = new SslStream(client.GetStream(), false, (_, certificate, _, errors) =>
-            {
-                if (certificate is null) return false;
-                using var copy = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
-                expires = new DateTimeOffset(copy.NotAfter.ToUniversalTime());
-                trusted = errors == SslPolicyErrors.None;
-                // This local status probe reads the certificate even for staging CAs.
-                // It never sends application traffic and still requires a matching hostname.
-                return (errors & SslPolicyErrors.RemoteCertificateNameMismatch) == 0;
-            });
-            await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = hostname,
-                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13 }, timeout.Token);
+            await client.ConnectAsync(
+                settings.BindAddress == "::" ? "::1" : "127.0.0.1",
+                settings.HttpsPort,
+                timeout.Token
+            );
+            using var tls = new SslStream(
+                client.GetStream(),
+                false,
+                (_, certificate, _, errors) =>
+                {
+                    if (certificate is null)
+                        return false;
+                    using var copy = X509CertificateLoader.LoadCertificate(
+                        certificate.GetRawCertData()
+                    );
+                    expires = new DateTimeOffset(copy.NotAfter.ToUniversalTime());
+                    trusted = errors == SslPolicyErrors.None;
+                    // This local status probe reads the certificate even for staging CAs.
+                    // It never sends application traffic and still requires a matching hostname.
+                    return (errors & SslPolicyErrors.RemoteCertificateNameMismatch) == 0;
+                }
+            );
+            await tls.AuthenticateAsClientAsync(
+                new SslClientAuthenticationOptions
+                {
+                    TargetHost = hostname,
+                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                },
+                timeout.Token
+            );
             return new(expires, trusted);
         }
-        catch (Exception error) when (!ct.IsCancellationRequested && error is IOException or SocketException or AuthenticationException or OperationCanceledException)
-        { return new(null, false); }
+        catch (Exception error)
+            when (!ct.IsCancellationRequested
+                && error
+                    is IOException
+                        or SocketException
+                        or AuthenticationException
+                        or OperationCanceledException
+            )
+        {
+            return new(null, false);
+        }
     }
 }
 

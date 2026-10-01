@@ -1,4 +1,5 @@
 namespace ForgeDock.Domain;
+
 public sealed class ResourceAlert
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -8,6 +9,7 @@ public sealed class ResourceAlert
     public string Message { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
 public sealed class ResourceObservation
 {
     public Guid ProjectId { get; set; }
