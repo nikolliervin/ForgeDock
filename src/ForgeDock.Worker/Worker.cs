@@ -158,7 +158,8 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             var snapshot = DeploymentSnapshot.Deserialize(deployment.ConfigurationJson);
             if (snapshot.DeploymentMode == DeploymentMode.Compose)
             {
-                await MonitorCompose(db, project, deployment, snapshot, ct);
+                var composeHealthy = await MonitorCompose(db, project, deployment, snapshot, ct);
+                await ObserveRelease(db, project, deployment, composeHealthy, ct);
                 continue;
             }
             async Task Log(string line)
@@ -168,13 +169,14 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
                 db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = "Runtime" });
                 await db.SaveChangesAsync(ct);
             }
+            var healthCheckPassed = false;
             try
             {
                 var state = await runner.RunAsync("docker", ["inspect", "--format", "{{.State.Running}}", container], null, _ => Task.CompletedTask, ct);
-                if (state != "true") { project.HealthStatus = "Stopped"; continue; }
+                if (state != "true") { project.HealthStatus = "Stopped"; await ObserveRelease(db, project, deployment, false, ct); continue; }
                 await runner.RunAsync("docker", ["exec", proxy, "wget", "-q", "-T", "2", "-O", "/dev/null",
                     $"http://{container}:{snapshot.ContainerPort}{snapshot.HealthPath}"], null, _ => Task.CompletedTask, ct);
-                project.HealthStatus = "Running";
+                project.HealthStatus = "Running"; healthCheckPassed = true;
                 await runner.RunAsync("docker", ["logs", "--since", "30s", "--tail", "500", container], null, Log, ct);
             }
             catch (Exception error) when (error is not OperationCanceledException)
@@ -182,6 +184,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
                 project.HealthStatus = "Unhealthy";
                 logger.LogWarning(error, "Health check failed for {ProjectId}", project.Id);
             }
+            await ObserveRelease(db, project, deployment, healthCheckPassed, ct);
         }
         await db.SaveChangesAsync(ct);
     }
@@ -319,6 +322,7 @@ public sealed partial class Worker(IServiceScopeFactory scopes, IConfiguration c
             throw;
         }
         var oldId = project.ActiveDeploymentId;
+        AutomaticRollback.Arm(deployment, oldId, snapshot);
         project.ActiveDeploymentId = deployment.Id;
         project.HealthStatus = "Running";
         await Stage(DeploymentState.Running);

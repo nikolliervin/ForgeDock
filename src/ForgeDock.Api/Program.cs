@@ -53,6 +53,7 @@ api.MapBackupEndpoints();
 api.MapStorageEndpoints();
 api.MapReleaseEndpoints();
 api.MapHookEndpoints();
+api.MapRollbackEndpoints();
 api.MapPreviewEndpoints();
 api.MapResourceEndpoints();
 api.MapTemplateEndpoints();
@@ -96,6 +97,8 @@ api.MapPut("/projects/{id:guid}", async (Guid id, ProjectRequest request, ForgeD
 });
 api.MapPost("/projects/{id:guid}/deployments", async (Guid id, DeploymentRequest request, ForgeDockDbContext db, CancellationToken ct) =>
 {
+    await using var storageTransaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({StorageRuntime.LockId})", ct);
     if (request.CommitSha is not null && !ProjectConfiguration.IsCommitSha(request.CommitSha))
         return Results.Problem("Commit SHA must contain exactly 40 hexadecimal characters.", statusCode: 400);
     var project = await db.Projects.FindAsync([id], ct);
@@ -105,7 +108,7 @@ api.MapPost("/projects/{id:guid}/deployments", async (Guid id, DeploymentRequest
     var environment = await db.EnvironmentVariables.Where(e => e.ProjectId == id).ToListAsync(ct);
     var deployment = new Deployment { ProjectId = id, RequestedCommit = request.CommitSha?.ToLowerInvariant(), ConfigurationJson = DeploymentSnapshot.Create(project, environment).Serialize() };
     db.Deployments.Add(deployment);
-    await db.SaveChangesAsync(ct);
+    await db.SaveChangesAsync(ct); await storageTransaction.CommitAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
 api.MapGet("/projects/{id:guid}/deployments", async (Guid id, int? limit, ForgeDockDbContext db, CancellationToken ct) =>
@@ -119,13 +122,15 @@ api.MapGet("/deployments/{id:guid}/logs", async (Guid id, long? after, ForgeDock
         .Take(500).Select(l => new { l.Id, l.Timestamp, l.Message, l.Phase }).ToListAsync(ct));
 api.MapPost("/deployments/{id:guid}/redeploy", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>
 {
+    await using var storageTransaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({StorageRuntime.LockId})", ct);
     var source = await db.Deployments.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id, ct);
     if (source is null) return Results.NotFound();
     if (await db.Operations.AnyAsync(o => o.ProjectId == source.ProjectId && (o.State == ProjectOperationState.Queued || o.State == ProjectOperationState.Running), ct))
         return Results.Conflict(new { error = "Wait for the pending project operation." });
     var deployment = new Deployment { ProjectId = source.ProjectId, RequestedCommit = source.CommitSha ?? source.RequestedCommit,
         ConfigurationJson = source.ConfigurationJson };
-    db.Deployments.Add(deployment); await db.SaveChangesAsync(ct);
+    db.Deployments.Add(deployment); await db.SaveChangesAsync(ct); await storageTransaction.CommitAsync(ct);
     return Results.Accepted($"/api/deployments/{deployment.Id}", DeploymentResponse.From(deployment));
 });
 api.MapPost("/deployments/{id:guid}/cancel", async (Guid id, ForgeDockDbContext db, CancellationToken ct) =>

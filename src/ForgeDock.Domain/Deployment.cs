@@ -23,6 +23,10 @@ public sealed class Deployment
     public string ServiceStatusJson { get; set; } = "[]";
     public string? ContainerId { get; set; }
     public string? Error { get; private set; }
+    public Guid? PreviousDeploymentId { get; set; }
+    public DateTimeOffset? RollbackDeadlineAt { get; set; }
+    public int HealthFailureCount { get; set; }
+    public DateTimeOffset? AutoRollbackTriggeredAt { get; set; }
     public Guid? RollbackSourceId { get; set; }
 
     public void TransitionTo(DeploymentState next, string? error = null)

@@ -68,6 +68,7 @@ public sealed partial class Worker
             await Stage(DeploymentState.Routing);
             await RouteCompose(db, project.Id, snapshot, ct);
             await RunDeploymentHook(db, deployment, snapshot, "AfterRoute", ct);
+            AutomaticRollback.Arm(deployment, previous?.Id, snapshot);
             project.ActiveDeploymentId = deployment.Id; project.HealthStatus = "Running";
             await Stage(DeploymentState.Running);
             if (previous is not null)
@@ -156,10 +157,11 @@ public sealed partial class Worker
         }
     }
 
-    private async Task MonitorCompose(ForgeDockDbContext db, Project project, Deployment deployment,
+    private async Task<bool> MonitorCompose(ForgeDockDbContext db, Project project, Deployment deployment,
         DeploymentSnapshot snapshot, CancellationToken ct)
     {
-        if (deployment.State == DeploymentState.Stopped) { project.HealthStatus = "Stopped"; return; }
+        if (deployment.State == DeploymentState.Stopped) { project.HealthStatus = "Stopped"; return false; }
+        var healthy = false;
         try
         {
             var statuses = await ComposeEngine.StatusAsync(project.Id, ct);
@@ -169,6 +171,7 @@ public sealed partial class Worker
             else if (statuses.Count != model["services"]!.AsObject().Count || statuses.Any(s => s.State is not ("running" or "completed") || s.Health is "unhealthy" or "starting"))
                 project.HealthStatus = "Unhealthy";
             else { await WaitForComposeHttp(project.Id, snapshot, ct); project.HealthStatus = "Running"; }
+            healthy = project.HealthStatus == "Running";
             await ComposeEngine.LogsAsync(model, project.Id, async line =>
             {
                 db.Logs.Add(new DeploymentLog { DeploymentId = deployment.Id, Message = line, Phase = "Runtime" }); await db.SaveChangesAsync(ct);
@@ -176,5 +179,6 @@ public sealed partial class Worker
         }
         catch (Exception error) when (error is not OperationCanceledException)
         { project.HealthStatus = "Unhealthy"; logger.LogWarning(error, "Compose health check failed for {ProjectId}", project.Id); }
+        return healthy;
     }
 }

@@ -11,6 +11,7 @@ public static class StorageRetention
         foreach (var group in all.GroupBy(d => d.ProjectId))
             foreach (var deployment in group.Where(d => d.State is DeploymentState.Running or DeploymentState.Stopped && d.ImageTag != null).OrderByDescending(d => d.CreatedAt).Take(retained)) result.Add(deployment.Id);
         foreach (var deployment in all.Where(IsPending)) { result.Add(deployment.Id); if (deployment.RollbackSourceId.HasValue) result.Add(deployment.RollbackSourceId.Value); }
+        foreach (var deployment in all.Where(d => d.RollbackDeadlineAt > DateTimeOffset.UtcNow && d.AutoRollbackTriggeredAt == null && d.PreviousDeploymentId != null)) result.Add(deployment.PreviousDeploymentId!.Value);
         return result;
     }
     public static IEnumerable<string> Images(Deployment deployment, SecretProtector protector)

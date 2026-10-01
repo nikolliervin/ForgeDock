@@ -65,3 +65,7 @@ Projects can join named application/environment groups and promote retained Auto
 ## Deployment hooks
 
 Snapshot before/after routing commands, bounded in-container execution, redacted execution history, and route recovery on failure are implemented. Retained rollback/restart skips hooks. See [deployment hooks](DEPLOYMENT_HOOKS.md) for verification and side-effect/timeout limits.
+
+## Automatic rollback
+
+New releases can observe repeated health failures and queue one retained-image recovery with notifications, protected source images, and visible watch history. Rollback/restart excludes new watches and hooks. See [automatic rollback](AUTOMATIC_ROLLBACK.md) for verification and serial-monitor/database-side-effect limits.

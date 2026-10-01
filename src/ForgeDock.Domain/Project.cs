@@ -4,6 +4,9 @@ public enum DeploymentMode { Dockerfile, Compose, Auto }
 
 public sealed class Project
 {
+    public bool AutoRollbackEnabled { get; set; }
+    public int RollbackWindowMinutes { get; set; } = 10;
+    public int RollbackFailureThreshold { get; set; } = 3;
     public string PreDeployCommand { get; set; } = "";
     public string PostDeployCommand { get; set; } = "";
     public int HookTimeoutSeconds { get; set; } = 120;
