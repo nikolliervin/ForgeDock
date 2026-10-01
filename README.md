@@ -1,75 +1,71 @@
 # ForgeDock
 
-A single-host deployment platform for public HTTPS Git repositories and private GitHub repositories with automatic Railpack builds, Dockerfiles, or Docker Compose stacks. The .NET API stores projects and queued deployments in PostgreSQL; a Linux worker builds and starts Docker containers and switches nginx routes after HTTP health checks. React provides the management dashboard.
+**A home for your apps on your Linux server.**
 
-## See it in action
+ForgeDock is a hobby project I built to manage applications and Docker containers on my Linux home server. I wanted one place to deploy my projects, check logs, manage databases, and handle the everyday maintenance of a small self-hosted setup.
 
-[**View the GIF walkthroughs →**](docs/SHOWCASE.md)
+Connect a Git repository, configure your app, and deploy it from the dashboard. ForgeDock builds the image, starts the containers, checks their health, and updates nginx routing when the release is ready.
 
-Follow the main workflow: connect a repository, configure environment variables, deploy with live logs, and recover a previous release. The visual guide also covers promotion, storage cleanup, and built-in documentation. Captures use the real interface with simulated demo responses.
+[GIF walkthroughs](docs/SHOWCASE.md) · [Getting started](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
 
-Run the local app with one command (requires the prerequisites in [development setup](docs/DEVELOPMENT.md)):
+![ForgeDock dashboard showing deployment progress and logs](docs/assets/deploy-and-logs.gif)
+
+*The walkthroughs use the real interface with simulated demo responses.*
+
+## What you can do
+
+| | Features |
+| --- | --- |
+| **Deploy applications** | Automatic builds with Railpack, Dockerfiles, Docker Compose, public repositories, and private GitHub repositories. |
+| **Manage releases** | Deployment history and logs, health checks, retained-image rollback, deployment hooks, and staging-to-production promotion. |
+| **Run supporting services** | Private databases with persistent storage, encrypted environment variables, and local or S3-compatible encrypted backups. |
+| **Automate maintenance** | Scheduled tasks, GitHub push deployments, pull-request previews, failure notifications, and storage retention. |
+| **Inspect your apps** | Container console, application metrics, resource limits, and crash or resource-pressure alerts. |
+| **Expose applications** | Local routes, verified custom domains, and optional automatic HTTPS. |
+
+See the [visual guide](docs/SHOWCASE.md) for project setup, deployments, rollback, promotion, and storage cleanup.
+
+## Run it locally
+
+You'll need Linux, Docker Engine, the .NET 10 SDK, Node.js 22.12 or newer, npm, Git, OpenSSL, Bash, and Make. Docker must be running and accessible to your user. See [development setup](docs/DEVELOPMENT.md) for details.
 
 ```bash
+git clone https://github.com/nikolliervin/ForgeDock.git
+cd ForgeDock
 ./scripts/start-local.sh
 ```
 
-The script prepares the environment, starts PostgreSQL, nginx, and BuildKit, applies migrations, installs frontend dependencies, builds the backend, and starts the API, worker, and dashboard. Press Ctrl+C to stop the app services; PostgreSQL, nginx, and BuildKit remain running. An existing `.env` is preserved.
+The launcher prepares the local environment, starts PostgreSQL, nginx, and BuildKit, applies migrations, and starts the API, worker, and dashboard. It preserves an existing `.env`.
 
-To run each step manually:
+- **Dashboard:** <http://127.0.0.1:5173>
+- **Documentation:** <http://127.0.0.1:5173/docs> — no sign-in required
+- **Sign-in:** use `ForgeDock__ApiToken` from your private `.env`
 
-```bash
-make init
-make infra
-make railpack # for projects without Dockerfiles
-make compose # for Compose application deployments
-make migrate
-npm --prefix web ci
-# In separate terminals:
-make api
-make worker
-make web
-```
+Press Ctrl+C to stop the application services. Infrastructure containers remain running. After backend updates, rerun the launcher to apply migrations and restart the services.
 
-Open http://127.0.0.1:5173 and sign in with `ForgeDock__ApiToken` from your private `.env`. Application routes use `http://<project-id-without-hyphens>.localhost:8088`.
+Manual setup and individual service commands are covered in [the development guide](docs/DEVELOPMENT.md).
 
-Start with [development setup](docs/DEVELOPMENT.md). Read [architecture](docs/ARCHITECTURE.md), [security](docs/SECURITY.md), [implementation status](docs/IMPLEMENTATION_STATUS.md), and [verification results](docs/MVP_VERIFICATION.md) before deploying publicly.
+## Documentation
 
-For multiple services, choose Docker Compose, set the repository-relative Compose file, routed service, and its internal port. See [Compose support](docs/COMPOSE.md).
+| Topic | Guides |
+| --- | --- |
+| **Build and deploy** | [Automatic builds](docs/AUTOMATIC_BUILDS.md), [Docker Compose](docs/COMPOSE.md), [project templates](docs/PROJECT_TEMPLATES.md) |
+| **Release workflows** | [Environment promotion](docs/ENVIRONMENT_PROMOTION.md), [deployment hooks](docs/DEPLOYMENT_HOOKS.md), [automatic rollback](docs/AUTOMATIC_ROLLBACK.md) |
+| **GitHub** | [Webhooks and private repository access](docs/GITHUB_WEBHOOKS.md), [pull-request previews](docs/PREVIEW_ENVIRONMENTS.md) |
+| **Data and maintenance** | [Database services](docs/DATABASE_SERVICES.md), [backups and restore](docs/BACKUPS.md), [scheduled jobs](docs/SCHEDULED_JOBS.md), [storage cleanup](docs/STORAGE_CLEANUP.md) |
+| **Operations** | [Metrics](docs/METRICS.md), [resource controls](docs/RESOURCE_CONTROLS.md), [notifications](docs/NOTIFICATIONS.md), [custom domains and HTTPS](docs/CUSTOM_DOMAINS.md) |
+| **Project internals** | [Architecture](docs/ARCHITECTURE.md), [architecture review](docs/ARCHITECTURE_REVIEW.md), [implementation status](docs/IMPLEMENTATION_STATUS.md), [security](docs/SECURITY.md) |
 
-Choose **Auto** to build repositories without a Dockerfile. See [automatic builds](docs/AUTOMATIC_BUILDS.md) for setup and command overrides.
+The dashboard also includes public, searchable documentation with deployment and configuration guides.
 
-The built-in React documentation lives at http://127.0.0.1:5173/docs and is available without signing in. Built frontend hosting also serves documentation routes from the API.
+## How it works
 
-Custom application domains and automatic HTTPS are available through the project **Domains** tab after configuring a public server. See [custom domains setup](docs/CUSTOM_DOMAINS.md). Local development remains on loopback by default.
+A **React and TypeScript dashboard** talks to an **ASP.NET Core API**. **PostgreSQL** stores configuration, encrypted release snapshots, work queues, and history. A separate **Linux worker** runs Git and Docker commands, checks application health, and manages **nginx** routes.
 
-See [application metrics](docs/METRICS.md) for resource history, collection behavior, and bulk environment imports.
+ForgeDock runs on one host and uses PostgreSQL as its durable queue. See [the architecture](docs/ARCHITECTURE.md) for ownership rules, concurrency, and recovery behavior.
 
-### Private GitHub repositories
+## Project scope
 
-Set `ForgeDock__GitHubToken` in the server `.env` to a fine-grained personal access token scoped to the repositories you deploy with **Contents: Read-only**. Obtain any required organization approval, then restart the worker. Use the normal `https://github.com/owner/repo.git` project URL. The shared worker credential supports cloning and fetching specific commits for Auto, Dockerfile, and Compose builds; it is not saved in project configuration or passed to builds or application containers. Replace it in `.env` when rotating an expired token. SSH, GitHub Enterprise, private submodules, and package registry authentication are not covered.
+This is a personal home-server project built for a trusted operator. It is intended for self-hosting and learning, with a shared management token rather than individual user accounts. It does not isolate hostile builds or provide a managed hosting service.
 
-### Project console
-
-The Console tab runs shell commands in the active application container (the public service for Compose). The API selects the target from the active deployment, verifies Docker ownership labels and the deployed image, and executes against the immutable container ID using the configured container user. Stopped containers and pending deployment/stop/delete operations block execution. Containers with privileged host access or bind mounts are rejected. Commands need `/bin/sh`; each request starts a fresh shell, returns stdout/stderr and its exit code, and retains at most 64 KiB of output. Requests time out after 30 seconds; commands may continue inside the container after a timeout. Interactive programs are not supported. Console changes outside persistent volumes disappear on redeploy. Commands and output are not stored in deployment logs.
-
-### GitHub auto-deploy
-
-Enable **GitHub auto-deploy** in a project's Settings, then add its payload URL and one-time secret to the repository's GitHub webhook settings. Select JSON payloads and push events. Matching pushes queue the exact commit with the project's current saved configuration; repeated deliveries are ignored. Secrets are encrypted, can be rotated, and are never returned by normal reads. A public HTTPS webhook endpoint is required. Test locally with a Cloudflare Quick Tunnel using the [step-by-step setup and troubleshooting guide](docs/GITHUB_WEBHOOKS.md). The same guide is available at `/docs/github-webhooks` in the dashboard.
-
-### Project services and automation
-
-- [Deployment notifications](docs/NOTIFICATIONS.md): encrypted Slack/Discord webhooks and existing SMTP, with durable retries and exact deployment log links.
-- [Database services](docs/DATABASE_SERVICES.md): private PostgreSQL, Redis, MySQL, SQL Server Express, and MongoDB with persistent volumes, and encrypted connection variables.
-- [Backups and restore](docs/BACKUPS.md): scheduled encrypted snapshots, S3-compatible off-host storage, retention, and confirmed local or remote restoration.
-- [PR preview environments](docs/PREVIEW_ENVIRONMENTS.md): isolated deployments and databases, unique URLs, and close-event cleanup.
-- [Automatic rollback](docs/AUTOMATIC_ROLLBACK.md): release observation windows, repeated-failure recovery, and notifications.
-- [Deployment hooks](docs/DEPLOYMENT_HOOKS.md): timed before/after routing commands with recorded results and failure recovery.
-- [Environment promotion](docs/ENVIRONMENT_PROMOTION.md): staging/production groups and retained-image releases with independent runtime configuration.
-- [Storage cleanup](docs/STORAGE_CLEANUP.md): disk usage, deletion previews, and automatic artifact/log retention.
-- [Resource controls](docs/RESOURCE_CONTROLS.md): snapshotted CPU/memory quotas and durable crash/pressure alerts.
-- [Project templates](docs/PROJECT_TEMPLATES.md): editable stack defaults and downloadable starter repositories.
-
-All six guides are also available in the built-in documentation. Apply migrations and restart the API and worker after updating the backend; `./scripts/start-local.sh` performs those steps on startup.
-
-Backend and frontend design notes: [architecture review](docs/ARCHITECTURE_REVIEW.md). Application tasks: [scheduled jobs](docs/SCHEDULED_JOBS.md).
+Crash-time route reconciliation and stronger worker execution fencing remain areas for improvement. Read [the architecture review](docs/ARCHITECTURE_REVIEW.md) and [security notes](docs/SECURITY.md) before exposing an installation publicly.
