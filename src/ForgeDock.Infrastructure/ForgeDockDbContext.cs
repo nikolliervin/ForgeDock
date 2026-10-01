@@ -26,6 +26,9 @@ public sealed class ForgeDockDbContext(DbContextOptions<ForgeDockDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<Project>().HasIndex(p => new { p.ApplicationName, p.EnvironmentName }).IsUnique();
+        model.Entity<Project>().Property(p => p.ApplicationName).HasMaxLength(50);
+        model.Entity<Project>().Property(p => p.EnvironmentName).HasMaxLength(50);
         model.Entity<Project>().Property(p => p.CpuLimit).HasDefaultValue(1.0);
         model.Entity<Project>().Property(p => p.MemoryLimitMiB).HasDefaultValue(512);
         model.Entity<Project>().Property(p => p.ResourceAlertsEnabled).HasDefaultValue(true);

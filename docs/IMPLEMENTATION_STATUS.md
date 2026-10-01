@@ -57,3 +57,7 @@ See [backup setup and limitations](BACKUPS.md) and [verification](OFF_HOST_BACKU
 ## Storage cleanup
 
 Platform-wide retention settings, disk usage and deletion previews, durable manual/daily cleanup jobs, and rollback availability are implemented. Active/latest/pending image references and build sources are protected; backups and volumes are preserved. See [storage cleanup](STORAGE_CLEANUP.md) for setup, verification, and limits.
+
+## Application environments
+
+Projects can join named application/environment groups and promote retained Auto/Dockerfile images across environments without rebuilding. Destination runtime configuration remains independent. See [environment promotion](ENVIRONMENT_PROMOTION.md) for setup, verification, and Compose/build-time limitations.

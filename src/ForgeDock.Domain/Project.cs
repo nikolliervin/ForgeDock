@@ -4,6 +4,8 @@ public enum DeploymentMode { Dockerfile, Compose, Auto }
 
 public sealed class Project
 {
+    public string? ApplicationName { get; set; }
+    public string? EnvironmentName { get; set; }
     public double CpuLimit { get; set; } = 1;
     public int MemoryLimitMiB { get; set; } = 512;
     public bool ResourceAlertsEnabled { get; set; } = true;

@@ -51,6 +51,7 @@ api.MapNotificationEndpoints();
 api.MapDatabaseEndpoints();
 api.MapBackupEndpoints();
 api.MapStorageEndpoints();
+api.MapReleaseEndpoints();
 api.MapPreviewEndpoints();
 api.MapResourceEndpoints();
 api.MapTemplateEndpoints();
