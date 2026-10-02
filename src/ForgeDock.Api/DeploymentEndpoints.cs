@@ -77,6 +77,25 @@ public static class DeploymentEndpoints
                     : Results.NotFound()
         );
         api.MapGet(
+            "/deployments/{id:guid}/topology",
+            async (Guid id, ForgeDockDbContext db, SecretProtector protector, CancellationToken ct) =>
+            {
+                var deployment = await db.Deployments.AsNoTracking()
+                    .SingleOrDefaultAsync(d => d.Id == id, ct);
+                if (deployment is null)
+                    return Results.NotFound();
+                var snapshot = DeploymentSnapshot.Deserialize(deployment.ConfigurationJson);
+                return Results.Ok(
+                    ComposeTopology.Read(
+                        deployment.ProtectedComposeManifest is { } manifest
+                            ? protector.Unprotect(manifest)
+                            : null,
+                        snapshot.ComposeService
+                    )
+                );
+            }
+        );
+        api.MapGet(
             "/deployments/{id:guid}/logs",
             async (Guid id, long? after, ForgeDockDbContext db, CancellationToken ct) =>
                 await db

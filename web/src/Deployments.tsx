@@ -1,3 +1,5 @@
+import { StackServices } from './StackServices';
+import type { Api } from './types';
 import { useEffect, useRef, useState } from 'react';
 import { CopyButton, Menu, RelativeTime, Skeleton, useUI } from './ui';
 import { navigate } from './navigation';
@@ -283,6 +285,7 @@ export function LogViewer({ logs, deployment }: { logs: Log[]; deployment: Deplo
   );
 }
 type Props = {
+  api: Api;
   deployments: Deployment[];
   deployment?: Deployment;
   logs: Log[];
@@ -296,6 +299,7 @@ type Props = {
   onDelete: (d: Deployment) => void;
 };
 export function DeploymentView({
+  api,
   deployments,
   deployment,
   logs,
@@ -487,29 +491,7 @@ export function DeploymentView({
               </div>
             )}
             {deployment.services?.length > 0 && (
-              <>
-                <h3>Stack services</h3>
-                <div className="table-scroll">
-                  <table className="services">
-                    <thead>
-                      <tr>
-                        <th>Service</th>
-                        <th>Status</th>
-                        <th>Health</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deployment.services.map((service) => (
-                        <tr key={service.name}>
-                          <td>{service.name}</td>
-                          <td>{service.state}</td>
-                          <td>{service.health || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+              <StackServices key={deployment.id} deployment={deployment} api={api} />
             )}
             <div ref={logPanel}>
               <LogViewer key={deployment.id} logs={logs} deployment={deployment} />
