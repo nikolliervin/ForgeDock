@@ -16,15 +16,15 @@ test('templates fill editable defaults preserve repository details and download 
   await page.getByLabel('Project name', { exact: true }).fill('My starter'); await page.getByLabel('Repository URL', { exact: true }).fill('https://github.com/example/starter');
   await page.getByLabel('Branch', { exact: true }).fill('master');
   await page.getByLabel('Project template', { exact: true }).selectOption('fastapi');
-  await expect(page.getByLabel('Container port', { exact: true })).toHaveValue('8000');
+  await expect(page.getByLabel('Port inside the container', { exact: true })).toHaveValue('8000');
   await expect(page.getByLabel(/Start command/)).toHaveValue('uvicorn main:app --host 0.0.0.0 --port $PORT');
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download starter ZIP', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('forgedock-fastapi-starter.zip');
   await page.getByLabel('Project template', { exact: true }).selectOption('compose');
   await expect(page.getByLabel('Repository URL', { exact: true })).toHaveValue('https://github.com/example/starter');
   await expect(page.getByLabel('Branch', { exact: true })).toHaveValue('master');
-  await expect(page.getByLabel('Public service', { exact: true })).toHaveValue('web');
-  await page.getByLabel('Container port', { exact: true }).fill('9000');
+  await expect(page.getByLabel('Service exposed through your app URL', { exact: true })).toHaveValue('web');
+  await page.getByLabel('Port inside the container', { exact: true }).fill('9000');
   await page.getByLabel('Managed database', { exact: true }).selectOption('SqlServer');
   await expect(page.getByRole('checkbox', { name: /I accept/ })).toHaveAttribute('required', '');
   await page.getByLabel('Managed database', { exact: true }).selectOption('Redis');

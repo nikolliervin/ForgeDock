@@ -11,7 +11,7 @@ test('operator creates, configures, deploys and inspects a real service', async 
   const name = `Browser demo ${Date.now()}`;
   await page.getByLabel('Project name').fill(name);
   await page.getByLabel('Repository URL').fill('https://github.com/docker/welcome-to-docker.git');
-  await page.getByLabel('Container port').fill('3000');
+  await page.getByLabel('Port inside the container').fill('3000');
   await page.locator('main').getByRole('button', { name: 'Create project', exact: true }).click();
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Environment', exact: true }).click();
