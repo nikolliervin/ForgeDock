@@ -104,6 +104,7 @@ api.MapGet(
     }
 );
 api.MapProjectEndpoints();
+api.MapConfigurationCheckEndpoints();
 api.MapDeploymentEndpoints();
 api.MapProjectEnvironmentEndpoints();
 app.Run();

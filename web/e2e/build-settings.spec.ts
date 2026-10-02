@@ -39,7 +39,7 @@ test('root directory persists through creation and settings and variables explai
   await expect(page.getByLabel(/^Root directory/)).toHaveValue('frontend');
   await page.getByLabel('Deployment type').selectOption('Compose');
   await expect(page.getByLabel(/^Root directory/)).toHaveCount(0);
-  await page.getByLabel('Public service').fill('web');
+  await page.getByLabel('Service exposed through your app URL', { exact: true }).fill('web');
   await page.getByRole('button', { name: 'Save settings', exact: true }).click();
   await expect.poll(() => writes.length).toBe(3);
   expect(writes[2].rootDirectory).toBe('.');

@@ -17,6 +17,60 @@ namespace ForgeDock.Tests;
 public class ManagementApiTests
 {
     [DockerFact]
+    public async Task RepositoryCheckDiscoversVotingStackWithoutReturningEnvironmentValues()
+    {
+        await using var fixture = new ApiFixture();
+        await fixture.Initialize();
+        fixture.Client.Timeout = TimeSpan.FromMinutes(3);
+        var response = await fixture.Client.PostAsJsonAsync(
+            "/api/configuration/check",
+            new
+            {
+                repositoryUrl = "https://github.com/dockersamples/example-voting-app",
+                branch = "main",
+                deploymentMode = "Auto",
+            }
+        );
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var check = await response.Content.ReadFromJsonAsync<ConfigurationCheck>();
+        Assert.Equal("Compose", check!.SuggestedMode);
+        Assert.Contains("docker-compose.yml", check.ComposeFiles);
+        Assert.Equal([80], check.Services.Single(s => s.Name == "vote").Ports);
+        Assert.Equal([80, 9229], check.Services.Single(s => s.Name == "result").Ports);
+        Assert.DoesNotContain(check.Issues, i => i.Severity == "error");
+        Assert.DoesNotContain("POSTGRES_PASSWORD", await response.Content.ReadAsStringAsync());
+    }
+
+    [DockerFact]
+    public async Task RepositoryChecksRequireAuthenticationAndValidatePathsBeforeCloning()
+    {
+        await using var fixture = new ApiFixture();
+        await fixture.Initialize();
+        using var anonymous = fixture.Factory.CreateClient();
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (
+                await anonymous.PostAsJsonAsync(
+                    "/api/configuration/check",
+                    new { repositoryUrl = "https://github.com/example/app" }
+                )
+            ).StatusCode
+        );
+        var response = await fixture.Client.PostAsJsonAsync(
+            "/api/configuration/check",
+            new
+            {
+                repositoryUrl = "https://github.com/example/app",
+                deploymentMode = "Compose",
+                composeFile = "../../etc/passwd",
+                composeService = "web",
+            }
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("relative path", await response.Content.ReadAsStringAsync());
+    }
+
+    [DockerFact]
     public async Task AuthenticationSnapshotsAndConcurrentQueueCommandsUseTheRealHttpPipeline()
     {
         await using var fixture = new ApiFixture();

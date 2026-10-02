@@ -150,10 +150,10 @@ export function NewProject({
           <input name="branch" required defaultValue="main" />
         </label>
         <fieldset key={selected} className="template-fields">
-          <DeploymentFields project={template} />
+          <DeploymentFields project={template} api={api} />
           <div className="columns">
             <label>
-              Container port
+              Port inside the container
               <input
                 name="port"
                 type="number"

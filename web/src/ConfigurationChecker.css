@@ -1,0 +1,40 @@
+.configuration-checker {
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.configuration-checker p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.configuration-checker ul {
+  padding-left: 18px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.configuration-checker li {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.configuration-checker li span {
+  font-weight: 600;
+}
+.configuration-checker .configuration-error {
+  color: #e57272;
+}
+.configuration-checker .configuration-warning {
+  color: var(--text);
+}
+.configuration-ports button {
+  margin: 0 6px 6px 0;
+}
+.configuration-recommendations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}

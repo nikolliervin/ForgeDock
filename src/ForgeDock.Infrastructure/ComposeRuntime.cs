@@ -106,6 +106,21 @@ public sealed class ComposeRuntime(
                 _ => Task.CompletedTask,
                 ct
             );
+            var preflight = RepositoryConfigurationInspector.InspectCompose(
+                source,
+                preview,
+                [],
+                snapshot.ComposeFile,
+                snapshot.ComposeService,
+                snapshot.ContainerPort
+            );
+            foreach (var issue in preflight.Issues)
+                await log($"Configuration {issue.Severity}: {issue.Message}");
+            var invalid = preflight.Issues.Where(i => i.Severity == "error").ToArray();
+            if (invalid.Length > 0)
+                throw new InvalidOperationException(
+                    string.Join(" ", invalid.Select(i => i.Message))
+                );
             ComposeDefinition.Normalize(
                 preview,
                 source,
@@ -321,6 +336,70 @@ public sealed class ComposeRuntime(
             .OrderByDescending(v => v.Length)
             .ToArray();
         return line => log(TimedContainerCommand.Redact(line, secrets));
+    }
+
+    /// <summary>Captures bounded health-check output before recovery removes failed containers.</summary>
+    public async Task LogFailureDiagnosticsAsync(
+        JsonObject model,
+        Guid projectId,
+        Func<string, Task> log,
+        string failure,
+        CancellationToken ct
+    )
+    {
+        var safeLog = RedactedLog(model, log);
+        await safeLog($"Deployment failed: {failure}");
+        var ids = await Docker(
+            [
+                "ps",
+                "--all",
+                "--filter",
+                $"label=com.docker.compose.project={ComposeDefinition.StackName(projectId)}",
+                "--format",
+                "{{.ID}}",
+            ],
+            ct
+        );
+        foreach (var id in ids.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var container = JsonNode.Parse(await Docker(["inspect", id], ct))!.AsArray()[0]!;
+            CheckLabels(container["Config"]?["Labels"], projectId);
+            var service =
+                container["Config"]?["Labels"]?["com.docker.compose.service"]?.ToString()
+                ?? "service";
+            if (
+                container["State"]?["Health"] is JsonObject health
+                && health["Status"]?.ToString() == "unhealthy"
+            )
+            {
+                await safeLog($"{service}: unhealthy. Recent health-check results:");
+                foreach (var check in (health["Log"] as JsonArray ?? []).TakeLast(3))
+                {
+                    var output = check?["Output"]?.ToString() ?? "No output";
+                    await safeLog(
+                        $"{service}: health check exit {check?["ExitCode"]}: {output.Trim()}"
+                    );
+                    if (output.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
+                        await safeLog(
+                            $"{service}: check script permissions and SELinux labels on mounted repository files."
+                        );
+                }
+            }
+            if (container["State"]?["Status"]?.ToString() is "exited" or "dead")
+            {
+                await safeLog(
+                    $"{service}: container exited with code {container["State"]?["ExitCode"]}."
+                );
+                await runner.RunAsync(
+                    "docker",
+                    ["logs", "--tail", "30", id],
+                    null,
+                    safeLog,
+                    ct,
+                    inheritEnvironment: false
+                );
+            }
+        }
     }
 
     /// <summary>

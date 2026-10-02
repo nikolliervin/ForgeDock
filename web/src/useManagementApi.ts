@@ -34,7 +34,12 @@ export function useManagementApi(
         );
       }
       const verb = method ?? (body === undefined ? 'GET' : 'POST');
-      if (verb !== 'GET' && !path.endsWith('/session') && !path.endsWith('/console')) {
+      if (
+        verb !== 'GET' &&
+        path !== '/configuration/check' &&
+        !path.endsWith('/session') &&
+        !path.endsWith('/console')
+      ) {
         const message = path.includes('/jobs')
           ? path.endsWith('/run')
             ? 'Task execution queued'
