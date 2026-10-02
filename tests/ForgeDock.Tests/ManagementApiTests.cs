@@ -42,6 +42,35 @@ public class ManagementApiTests
     }
 
     [DockerFact]
+    public async Task RepositoryCheckDetectsMasterAndExplainsMissingExplicitBranch()
+    {
+        await using var fixture = new ApiFixture();
+        await fixture.Initialize();
+        fixture.Client.Timeout = TimeSpan.FromMinutes(3);
+        var response = await fixture.Client.PostAsJsonAsync(
+            "/api/configuration/check",
+            new
+            {
+                repositoryUrl = "https://github.com/nikolliervin/ForgeDock",
+                detectDefaultBranch = true,
+            }
+        );
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var check = await response.Content.ReadFromJsonAsync<ConfigurationCheck>();
+        Assert.Equal("master", check!.SuggestedBranch);
+        var invalid = await fixture.Client.PostAsJsonAsync(
+            "/api/configuration/check",
+            new
+            {
+                repositoryUrl = "https://github.com/nikolliervin/ForgeDock",
+                branch = "forgedock-nonexistent-branch-test",
+            }
+        );
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, invalid.StatusCode);
+        Assert.Contains("was not found", await invalid.Content.ReadAsStringAsync());
+    }
+
+    [DockerFact]
     public async Task RepositoryChecksRequireAuthenticationAndValidatePathsBeforeCloning()
     {
         await using var fixture = new ApiFixture();

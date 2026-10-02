@@ -3,6 +3,7 @@ import type { Api } from './types';
 import './ConfigurationChecker.css';
 export type ConfigurationCheck = {
   suggestedMode?: string | null;
+  suggestedBranch?: string | null;
   composeFiles: string[];
   selectedComposeFile: string | null;
   services: { name: string; ports: number[] }[];
@@ -13,8 +14,10 @@ export function ConfigurationChecker({
   onResult,
   onApplyFile,
   onApplyMode,
+  detectDefaultBranch = false,
 }: {
   api: Api;
+  detectDefaultBranch?: boolean;
   onResult: (result?: ConfigurationCheck) => void;
   onApplyFile: (file: string) => void;
   onApplyMode: () => void;
@@ -26,6 +29,7 @@ export function ConfigurationChecker({
   const [stale, setStale] = useState(false);
   const [service, setService] = useState('');
   const generation = useRef(0);
+  const branchEdited = useRef(false);
   const automaticCheck = useRef<() => void>(() => {});
   const lastAutomatic = useRef('');
   const pendingAutomatic = useRef(false);
@@ -35,6 +39,7 @@ export function ConfigurationChecker({
     const form = root.current?.closest('form');
     const changed = (event: Event) => {
       const name = (event.target as HTMLInputElement).name;
+      if (name === 'branch') branchEdited.current = true;
       if (
         ![
           'repository',
@@ -93,6 +98,7 @@ export function ConfigurationChecker({
       const value = await api<ConfigurationCheck>('/configuration/check', {
         repositoryUrl: data.get('repository'),
         branch: data.get('branch') || 'main',
+        detectDefaultBranch: detectDefaultBranch && !branchEdited.current,
         deploymentMode: data.get('deploymentMode'),
         rootDirectory: data.get('rootDirectory') || '.',
         dockerfile: data.get('dockerfile') || 'Dockerfile',
@@ -207,6 +213,28 @@ export function ConfigurationChecker({
             </div>
           )}
           <div className="configuration-values">
+            {result.suggestedBranch && (
+              <div className="configuration-value">
+                <div>
+                  <span>Repository branch</span>
+                  <code>{result.suggestedBranch}</code>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Use branch ${result.suggestedBranch}`}
+                  onClick={() => {
+                    const input = root
+                      .current!.closest('form')!
+                      .elements.namedItem('branch') as HTMLInputElement;
+                    input.value = result.suggestedBranch!;
+                    branchEdited.current = true;
+                    setResult({ ...result, suggestedBranch: undefined });
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            )}
             {result.suggestedMode === 'Compose' && (
               <div className="configuration-value">
                 <div>

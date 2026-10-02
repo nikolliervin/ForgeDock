@@ -13,7 +13,8 @@ public record ConfigurationCheckRequest(
     string Dockerfile = "Dockerfile",
     string ComposeFile = "docker-compose.yml",
     string ComposeService = "",
-    int ContainerPort = 8080
+    int ContainerPort = 8080,
+    bool DetectDefaultBranch = false
 );
 
 public static class ConfigurationCheckEndpoints
@@ -62,6 +63,68 @@ public static class ConfigurationCheckEndpoints
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(root)!);
                     var runner = new ProcessRunner();
+                    var branch = request.Branch!;
+                    if (request.DetectDefaultBranch)
+                    {
+                        var reference = await GitRepository.RunAsync(
+                            runner,
+                            request.RepositoryUrl!,
+                            configuration["ForgeDock:GitHubToken"],
+                            [
+                                "-c",
+                                "http.followRedirects=false",
+                                "-c",
+                                "protocol.allow=never",
+                                "-c",
+                                "protocol.https.allow=always",
+                                "ls-remote",
+                                "--symref",
+                                "--",
+                                request.RepositoryUrl!,
+                                "HEAD",
+                            ],
+                            _ => Task.CompletedTask,
+                            timeout.Token
+                        );
+                        var match = Regex.Match(
+                            reference,
+                            @"(?m)^ref: refs/heads/([^\t\r\n]+)\tHEAD"
+                        );
+                        if (!match.Success)
+                            return Results.Problem(
+                                "Could not find the repository's default branch. Check repository access or enter a branch explicitly.",
+                                statusCode: 422
+                            );
+                        branch = match.Groups[1].Value;
+                    }
+                    if (!request.DetectDefaultBranch)
+                    {
+                        var reference = await GitRepository.RunAsync(
+                            runner,
+                            request.RepositoryUrl!,
+                            configuration["ForgeDock:GitHubToken"],
+                            [
+                                "-c",
+                                "http.followRedirects=false",
+                                "-c",
+                                "protocol.allow=never",
+                                "-c",
+                                "protocol.https.allow=always",
+                                "ls-remote",
+                                "--heads",
+                                "--",
+                                request.RepositoryUrl!,
+                                $"refs/heads/{branch}",
+                            ],
+                            _ => Task.CompletedTask,
+                            timeout.Token
+                        );
+                        if (string.IsNullOrWhiteSpace(reference))
+                            return Results.Problem(
+                                $"Branch '{branch}' was not found in this repository. Enter its default branch or another existing branch.",
+                                statusCode: 422
+                            );
+                    }
                     await GitRepository.RunAsync(
                         runner,
                         request.RepositoryUrl!,
@@ -78,7 +141,7 @@ public static class ConfigurationCheckEndpoints
                             "1",
                             "--single-branch",
                             "--branch",
-                            request.Branch!,
+                            branch,
                             "--",
                             request.RepositoryUrl!,
                             root,
@@ -105,11 +168,19 @@ public static class ConfigurationCheckEndpoints
                             single with
                             {
                                 SuggestedMode = recommendCompose ? "Compose" : null,
+                                SuggestedBranch = branch != request.Branch ? branch : null,
                             }
                         );
                     }
                     var selected = recommendCompose ? files[0] : request.ComposeFile!;
                     var issues = new List<ConfigurationIssue>();
+                    if (branch != request.Branch)
+                        issues.Add(
+                            new(
+                                "warning",
+                                $"The repository's default branch is '{branch}'. Apply this branch before deploying, or enter the branch you want."
+                            )
+                        );
                     var requestedPath = ComposeDefinition.RepositoryPath(root, selected);
                     if (File.Exists(requestedPath) && !files.Contains(selected))
                         files = files.Append(selected).Order().ToArray();
@@ -197,6 +268,7 @@ public static class ConfigurationCheckEndpoints
                             {
                                 Issues = issues.Concat(check.Issues).ToArray(),
                                 SuggestedMode = recommendCompose ? "Compose" : null,
+                                SuggestedBranch = branch != request.Branch ? branch : null,
                             }
                         );
                     }

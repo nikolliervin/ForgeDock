@@ -8,6 +8,7 @@ import { lazy, Suspense } from 'react';
 const Docs = lazy(() => import('./Docs').then((module) => ({ default: module.Docs })));
 const Console = lazy(() => import('./Console').then((module) => ({ default: module.Console })));
 import { NewProject } from './NewProject';
+import { ProjectCard } from './ProjectCard';
 import './platform.css';
 import { Jobs } from './Jobs';
 import { Releases } from './Releases';
@@ -932,18 +933,7 @@ function App({ pathname }: { pathname: string }) {
             {projects.length ? (
               <div className="project-grid">
                 {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    className="panel project-card"
-                    onClick={() => openProject(p.id)}
-                  >
-                    <h2>{p.name}</h2>
-                    <p>{p.repositoryUrl}</p>
-                    <span className="badge">{p.branch}</span>
-                    <small>
-                      {p.healthStatus === 'NotDeployed' ? 'Not deployed' : p.healthStatus}
-                    </small>
-                  </button>
+                  <ProjectCard key={p.id} project={p} onOpen={() => openProject(p.id)} />
                 ))}
               </div>
             ) : (

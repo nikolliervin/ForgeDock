@@ -13,7 +13,8 @@ public sealed record ConfigurationCheck(
     string? SelectedComposeFile,
     ConfigurationService[] Services,
     ConfigurationIssue[] Issues,
-    string? SuggestedMode = null
+    string? SuggestedMode = null,
+    string? SuggestedBranch = null
 );
 
 // Inspects metadata only: does not build images, run hooks, pull images, or start containers.

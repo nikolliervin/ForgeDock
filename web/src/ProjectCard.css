@@ -1,0 +1,131 @@
+.project-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+  gap: 18px;
+}
+button.panel.project-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  box-shadow: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+button.panel.project-card:hover {
+  filter: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.project-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.project-card-symbol {
+  display: inline-flex;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+}
+.project-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.project-card-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.project-card-status.healthy {
+  color: var(--success);
+}
+.project-card-status.unhealthy,
+.project-card-status.failed {
+  color: var(--failure);
+}
+.project-card h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  line-height: 1.4;
+  letter-spacing: -0.25px;
+  overflow-wrap: anywhere;
+}
+.project-card-repository {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  min-width: 0;
+}
+.project-card-repository svg {
+  flex-shrink: 0;
+}
+.project-card-repository span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-card-provider {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin: 6px 0 20px 25px;
+  overflow-wrap: anywhere;
+}
+.project-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+  margin-top: auto;
+  width: 100%;
+}
+.project-card-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.project-card-branch svg {
+  flex-shrink: 0;
+}
+.project-card-branch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-card-open {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.project-card-open > span {
+  margin-left: 4px;
+}
+.project-card:hover .project-card-open {
+  color: var(--accent);
+}

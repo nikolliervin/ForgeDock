@@ -62,7 +62,7 @@ test('leaving repository URL loads dismissible engine recommendations without ch
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/configuration/check') {
       checks++;
-      return route.fulfill({ json: { suggestedMode: 'Compose', composeFiles: ['compose.yaml'], selectedComposeFile: 'compose.yaml', services: [{ name: 'vote', ports: [80] }, { name: 'result', ports: [80] }], issues: [{ severity: 'warning', message: 'Choose the service exposed through your app URL.' }] } });
+      return route.fulfill({ json: { suggestedBranch: 'master', suggestedMode: 'Compose', composeFiles: ['compose.yaml'], selectedComposeFile: 'compose.yaml', services: [{ name: 'vote', ports: [80] }, { name: 'result', ports: [80] }], issues: [{ severity: 'warning', message: 'Choose the service exposed through your app URL.' }] } });
     }
     await route.fulfill({ json: path === '/api/session' ? { name: 'operator' } : [] });
   });
@@ -75,6 +75,9 @@ test('leaving repository URL loads dismissible engine recommendations without ch
   await expect(page.getByText('Engine recommendations', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Deployment type', { exact: true })).toHaveValue('Auto');
   await expect(page.getByLabel('Port inside the container', { exact: true })).toHaveValue('8080');
+  await expect(page.getByLabel('Branch', { exact: true })).toHaveValue('main');
+  await page.getByRole('button', { name: 'Use branch master', exact: true }).click();
+  await expect(page.getByLabel('Branch', { exact: true })).toHaveValue('master');
   await page.getByRole('button', { name: 'Use Docker Compose', exact: true }).click();
   await page.getByRole('button', { name: 'Use compose.yaml', exact: true }).click();
   await page.getByLabel('Service exposed through your app URL', { exact: true }).selectOption('vote');

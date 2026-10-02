@@ -205,7 +205,7 @@ export function NewProject({
               <p>Review the engine's suggestions or configure your own build.</p>
             </div>
             <fieldset key={selected} className="template-fields">
-              <DeploymentFields project={template} api={api} />
+              <DeploymentFields project={template} api={api} detectDefaultBranch />
               <div className="columns">
                 <label>
                   Port inside the container

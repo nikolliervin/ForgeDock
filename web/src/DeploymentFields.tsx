@@ -10,7 +10,15 @@ export type DeploymentConfig = {
   composeFile: string;
   composeService: string;
 };
-export function DeploymentFields({ project, api }: { project?: DeploymentConfig; api: Api }) {
+export function DeploymentFields({
+  project,
+  api,
+  detectDefaultBranch = false,
+}: {
+  project?: DeploymentConfig;
+  api: Api;
+  detectDefaultBranch?: boolean;
+}) {
   const [mode, setMode] = useState(project?.deploymentMode ?? 'Auto');
   const [metadata, setMetadata] = useState<ConfigurationCheck>();
   const [composeFile, setComposeFile] = useState(project?.composeFile ?? 'docker-compose.yml');
@@ -19,6 +27,7 @@ export function DeploymentFields({ project, api }: { project?: DeploymentConfig;
     <>
       <ConfigurationChecker
         api={api}
+        detectDefaultBranch={detectDefaultBranch}
         onResult={setMetadata}
         onApplyMode={() => setMode('Compose')}
         onApplyFile={(file) => {
