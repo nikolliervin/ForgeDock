@@ -905,6 +905,7 @@ function App({ pathname }: { pathname: string }) {
               />
             ) : (
               <DeploymentView
+                api={api}
                 deployments={deployments}
                 deployment={deployment}
                 logs={logs}

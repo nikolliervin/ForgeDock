@@ -26,6 +26,8 @@ public class ManagementApiTests
             HttpStatusCode.Unauthorized,
             (await unauthenticated.GetAsync("/api/storage")).StatusCode
         );
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await unauthenticated.GetAsync($"/api/deployments/{Guid.NewGuid()}/topology")).StatusCode);
         var client = fixture.Client;
         var created = await client.PostAsJsonAsync(
             "/api/projects",
@@ -95,6 +97,19 @@ public class ManagementApiTests
                 await client.GetAsync($"/api/projects/{id}/environment")
             ).Content.ReadAsStringAsync()
         );
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/deployments/{Guid.NewGuid()}/topology")).StatusCode);
+        queued.ProtectedComposeManifest = fixture.Protector.Protect("""
+            {"services":{"web":{"depends_on":{"db":{}},"environment":{"PASSWORD":"topology-private"}},
+            "db":{"volumes":[{"type":"volume","source":"data","target":"/data"}]}}}
+            """);
+        await db.SaveChangesAsync();
+        var topologyResponse = await client.GetAsync($"/api/deployments/{queued.Id}/topology");
+        Assert.Equal(HttpStatusCode.OK, topologyResponse.StatusCode);
+        var topologyJson = await topologyResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("topology-private", topologyJson);
+        var topology = await topologyResponse.Content.ReadFromJsonAsync<ComposeTopology>();
+        Assert.Equal(["db"], topology!.Services.Single(s => s.Name == "web").Dependencies);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/projects/{id}")).StatusCode);
     }
 
