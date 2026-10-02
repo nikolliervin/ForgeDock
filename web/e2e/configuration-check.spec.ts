@@ -81,7 +81,12 @@ test('leaving repository URL loads dismissible engine recommendations without ch
   await page.getByRole('button', { name: 'Use port 80', exact: true }).click();
   await expect(page.getByLabel('Port inside the container', { exact: true })).toHaveValue('80');
   await page.getByRole('button', { name: 'Dismiss suggestions', exact: true }).click();
-  await expect(page.getByText('Engine recommendations', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Dismiss suggestions', exact: true })).toHaveCount(0);
+  await expect(page.locator('.configuration-values')).toHaveCount(0);
   await page.getByLabel('Service exposed through your app URL', { exact: true }).fill('custom-service');
   expect(checks).toBe(1);
+  await page.screenshot({ path: '../.runtime/screenshots/create-project-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: '../.runtime/screenshots/create-project-mobile.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 });

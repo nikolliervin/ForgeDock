@@ -133,114 +133,178 @@ export function ConfigurationChecker({
     input.value = String(port);
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  const hasErrors = result?.issues.some((issue) => issue.severity === 'error');
   return (
-    <div ref={root} className="configuration-checker">
-      <button
-        data-configuration-check
-        type="button"
-        className="secondary"
-        disabled={busy}
-        onClick={() => void check()}
-      >
-        {busy ? 'Checking repository…' : 'Check configuration'}
-      </button>
-      <p className="field-hint">
-        Suggestions load when you leave the repository URL field. You can edit any setting.
-      </p>
-      {error && <p role="alert">{error}</p>}
-      {stale && <p role="status">Settings changed. Check again to validate them.</p>}
-      {result && (
-        <div aria-live="polite">
-          <div className="configuration-recommendations">
+    <div ref={root} className={`configuration-checker ${busy ? 'is-checking' : ''}`}>
+      <div className="configuration-header">
+        <div className="configuration-title">
+          <span className="configuration-mark" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" />
+              <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+            </svg>
+          </span>
+          <div>
             <strong>Engine recommendations</strong>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                generation.current++;
-                setResult(undefined);
-                onResult(undefined);
-                setStale(false);
-              }}
-            >
-              Dismiss suggestions
-            </button>
+            <p>Suggested settings for this repository</p>
           </div>
-          <p>
-            These are the settings the engine recommends. Apply the suggestions you want, or enter
-            your own values.
+        </div>
+        {result && (
+          <button
+            type="button"
+            className="configuration-dismiss"
+            aria-label="Dismiss suggestions"
+            title="Dismiss suggestions"
+            onClick={() => {
+              generation.current++;
+              pendingAutomatic.current = false;
+              setResult(undefined);
+              onResult(undefined);
+              setStale(false);
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {busy ? (
+        <div className="configuration-loading" role="status">
+          <span className="configuration-spinner" aria-hidden="true" />
+          Inspecting repository files…
+        </div>
+      ) : (
+        !result &&
+        !error && (
+          <p className="configuration-empty">
+            Leave the repository URL field to discover settings, or run a check below.
           </p>
-          {result.suggestedMode === 'Compose' && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                onApplyMode();
-                setStale(true);
-              }}
-            >
-              Use Docker Compose
-            </button>
-          )}
-
-          {!stale && (
-            <strong>
-              {result.issues.some((i) => i.severity === 'error')
-                ? 'Settings need attention'
-                : 'Repository checks complete'}
-            </strong>
-          )}
-          <ul>
-            {result.issues.map((issue, i) => (
-              <li key={i} className={`configuration-${issue.severity}`}>
-                <span>
-                  {issue.severity === 'error'
-                    ? 'Error'
-                    : issue.severity === 'warning'
-                      ? 'Check'
-                      : 'Note'}
-                  :
-                </span>{' '}
-                {issue.message}
-              </li>
-            ))}
-          </ul>
-          {result.selectedComposeFile && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                onApplyFile(result.selectedComposeFile!);
-                setStale(true);
-              }}
-            >
-              Use {result.selectedComposeFile}
-            </button>
-          )}
-          {ports.length > 0 && (
-            <div className="configuration-ports">
-              <p>
-                Ports inside <strong>{service}</strong>: {ports.join(', ')}. ForgeDock uses the
-                container port, not the host port.
-              </p>
-              {ports.map((port) => (
-                <button
-                  type="button"
-                  className="secondary"
-                  key={port}
-                  onClick={() => applyPort(port)}
-                >
-                  Use port {port}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="field-hint">
-            These checks do not guarantee a successful build or runtime health. Check again after
-            applying suggestions.
-          </p>
+        )
+      )}
+      {error && (
+        <div className="configuration-notice configuration-error" role="alert">
+          {error}
         </div>
       )}
+      {stale && result && (
+        <div className="configuration-status" role="status">
+          <i className="stale" />
+          Settings changed. Check again to validate them.
+        </div>
+      )}
+      {result && !busy && (
+        <div aria-live="polite">
+          {!stale && (
+            <div className={`configuration-status ${hasErrors ? 'needs-attention' : 'complete'}`}>
+              <i />
+              {hasErrors ? 'Settings need attention' : 'Repository checks complete'}
+            </div>
+          )}
+          <div className="configuration-values">
+            {result.suggestedMode === 'Compose' && (
+              <div className="configuration-value">
+                <div>
+                  <span>Deployment type</span>
+                  <strong>Docker Compose</strong>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Use Docker Compose"
+                  onClick={() => {
+                    onApplyMode();
+                    setStale(true);
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {result.selectedComposeFile && (
+              <div className="configuration-value">
+                <div>
+                  <span>Compose file</span>
+                  <code>{result.selectedComposeFile}</code>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Use ${result.selectedComposeFile}`}
+                  onClick={() => {
+                    onApplyFile(result.selectedComposeFile!);
+                    setStale(true);
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {ports.length > 0 && (
+              <div className="configuration-value">
+                <div>
+                  <span>Internal port · {service}</span>
+                  <strong>{ports.join(' / ')}</strong>
+                </div>
+                <div className="configuration-port-actions">
+                  {ports.map((port) => (
+                    <button
+                      type="button"
+                      aria-label={`Use port ${port}`}
+                      key={port}
+                      onClick={() => applyPort(port)}
+                    >
+                      {ports.length > 1 ? `Use ${port}` : 'Apply'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {result.issues.length > 0 && (
+            <ul className="configuration-issues">
+              {result.issues.map((issue, i) => (
+                <li key={i} className={`configuration-${issue.severity}`}>
+                  <span className="configuration-issue-icon" aria-hidden="true">
+                    {issue.severity === 'error' ? '!' : issue.severity === 'warning' ? '!' : 'i'}
+                  </span>
+                  <span>{issue.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      <div className="configuration-footer">
+        <span>
+          {result
+            ? 'Optional suggestions. You can use your own settings.'
+            : 'No containers will be started.'}
+        </span>
+        <button
+          data-configuration-check
+          type="button"
+          disabled={busy}
+          aria-label={busy ? 'Checking repository…' : 'Check configuration'}
+          onClick={() => void check()}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            width="13"
+            height="13"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M13 6a5 5 0 1 0 .1 4M13 2v4H9" />
+          </svg>
+          {busy ? 'Checking' : result ? 'Recheck' : 'Check'}
+        </button>
+      </div>
     </div>
   );
 }
