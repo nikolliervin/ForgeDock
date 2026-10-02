@@ -178,10 +178,44 @@ public sealed partial class Worker(
             catch (Exception error)
             {
                 logger.LogError(error, "Deployment {DeploymentId} failed", deployment.Id);
-                deployment.TransitionTo(DeploymentState.Failed, error.Message);
-                await db.SaveChangesAsync(stoppingToken);
+                await RecordDeploymentFailure(db, deployment, error, stoppingToken);
             }
         }
+    }
+
+    private async Task RecordDeploymentFailure(
+        ForgeDockDbContext db,
+        Deployment deployment,
+        Exception error,
+        CancellationToken ct
+    )
+    {
+        string message;
+        try
+        {
+            var snapshot = DeploymentSnapshot.Deserialize(deployment.ConfigurationJson);
+            message = TimedContainerCommand.Redact(
+                error.Message,
+                snapshot.ProtectedEnvironment.Values.Select(protector.Unprotect)
+            );
+        }
+        catch (Exception redactionError)
+        {
+            logger.LogWarning(redactionError, "Could not redact deployment failure {DeploymentId}", deployment.Id);
+            message = "Deployment failed. Inspect worker logs for details.";
+        }
+        if (message.Length > 8000)
+            message = message[..8000];
+        var phase = deployment.State is DeploymentState.Queued or DeploymentState.Preparing
+            or DeploymentState.Cloning or DeploymentState.Building ? "Build" : "Runtime";
+        deployment.TransitionTo(DeploymentState.Failed, message);
+        db.Logs.Add(new DeploymentLog
+        {
+            DeploymentId = deployment.Id,
+            Message = $"Deployment failed: {message}",
+            Phase = phase,
+        });
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>
