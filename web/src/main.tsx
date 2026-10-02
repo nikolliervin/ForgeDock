@@ -52,6 +52,10 @@ const tabs: Tab[] = [
 function App({ pathname }: { pathname: string }) {
   const [token, setToken] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState<'sso' | 'token' | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string>();
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authProvider, setAuthProvider] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
@@ -137,7 +141,47 @@ function App({ pathname }: { pathname: string }) {
             ? `${project.name} · ${tab[0].toUpperCase() + tab.slice(1)} · ForgeDock`
             : 'Projects · ForgeDock';
   }, [project?.name, tab, pathname]);
-  const api = useManagementApi(token, setAuthenticated);
+  const api = useManagementApi(token, setAuthenticated, csrfToken);
+  useEffect(() => {
+    if (pathname.startsWith('/docs')) return;
+    let disposed = false;
+    async function restoreSession() {
+      try {
+        const configResponse = await fetch('/api/auth/config', { credentials: 'same-origin' });
+        if (!configResponse.ok) throw new Error('Unable to load sign-in configuration.');
+        const config = await configResponse.json();
+        const mode = config.mode === 'sso' ? 'sso' : 'token';
+        if (disposed) return;
+        setAuthMode(mode);
+        setAuthProvider(config.provider === 'keycloak' ? 'Keycloak' : '');
+        if (mode === 'sso') {
+          const response = await fetch('/api/session', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+          });
+          if (response.ok) {
+            const session = await response.json();
+            if (!disposed) {
+              setCsrfToken(session.csrfToken);
+              setAuthenticated(true);
+            }
+          } else if (response.status !== 401) throw new Error('Unable to restore your session.');
+        }
+        if (new URLSearchParams(window.location.search).has('authError'))
+          setError(
+            'SSO sign-in failed or this account is not allowed. Contact your administrator.',
+          );
+      } catch (error) {
+        if (!disposed) setError((error as Error).message);
+      } finally {
+        if (!disposed) setAuthLoading(false);
+      }
+    }
+    void restoreSession();
+    return () => {
+      disposed = true;
+    };
+  }, [pathname.startsWith('/docs')]);
   async function action(task: () => Promise<void>) {
     setBusy(true);
     setError('');
@@ -374,6 +418,7 @@ function App({ pathname }: { pathname: string }) {
           : project?.healthStatus === 'NotDeployed'
             ? 'Not deployed'
             : (project?.healthStatus ?? 'Not deployed');
+  if (authLoading && !pathname.startsWith('/docs')) return <Skeleton label="Checking session…" />;
   if (!authenticated)
     return (
       <main className="login">
@@ -382,28 +427,41 @@ function App({ pathname }: { pathname: string }) {
           Documentation ↗
         </a>
         <h1>Your deployment control room.</h1>
-        <p>Sign in with your management token. It stays in memory for this session.</p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void action(async () => {
-              await api('/session');
-              setAuthenticated(true);
-            });
-          }}
-        >
-          <label>
-            Management token
-            <input
-              type="password"
-              autoComplete="off"
-              required
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-            />
-          </label>
-          <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        </form>
+        {authMode === 'sso' ? (
+          <>
+            <p>Sign in securely with {authProvider || 'your organization’s identity provider'}.</p>
+            <button onClick={() => window.location.assign('/api/auth/login')}>
+              Sign in with SSO
+            </button>
+          </>
+        ) : authMode === 'token' ? (
+          <>
+            <p>Sign in with your management token. It stays in memory for this session.</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void action(async () => {
+                  await api('/session');
+                  setAuthenticated(true);
+                });
+              }}
+            >
+              <label>
+                Management token
+                <input
+                  type="password"
+                  autoComplete="off"
+                  required
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </label>
+              <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+            </form>
+          </>
+        ) : (
+          <p>Sign-in is unavailable. Reload the page to try again.</p>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}
@@ -533,9 +591,13 @@ function App({ pathname }: { pathname: string }) {
           className="signout"
           title="Sign out"
           onClick={() => {
-            setToken('');
-            setAuthenticated(false);
-            setProjects([]);
+            void action(async () => {
+              if (authMode === 'sso') await api('/auth/logout', {}, 'POST');
+              setToken('');
+              setCsrfToken(undefined);
+              setAuthenticated(false);
+              setProjects([]);
+            });
           }}
         >
           Sign out
@@ -941,12 +1003,12 @@ function Root() {
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }, []);
-  const docs = pathname === '/' || pathname === '/docs' || pathname.startsWith('/docs/');
+  const docs = pathname === '/docs' || pathname.startsWith('/docs/');
 
   return (
     <>
       <div hidden={docs}>
-        <App pathname={pathname === '/' ? '/docs' : pathname} />
+        <App pathname={pathname} />
       </div>
       {docs && (
         <Suspense fallback={<Skeleton label="Loading documentation…" />}>

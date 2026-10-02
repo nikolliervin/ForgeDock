@@ -37,9 +37,9 @@ cd ForgeDock
 
 The launcher prepares the local environment, starts PostgreSQL, nginx, and BuildKit, applies migrations, and starts the API, worker, and dashboard. It preserves an existing `.env`.
 
-- **Dashboard:** <http://127.0.0.1:5173/dashboard>
-- **Documentation:** <http://127.0.0.1:5173> (also available at `/docs`) — no sign-in required
-- **Sign-in:** use `ForgeDock__ApiToken` from your private `.env`
+- **Dashboard:** <http://127.0.0.1:5173/dashboard> (local Keycloak: <https://localhost:5443>)
+- **Documentation:** <http://127.0.0.1:5173/docs> — no sign-in required
+- **Sign-in:** configure [Keycloak or another SSO provider](docs/AUTHENTICATION.md) for individual accounts, or use `ForgeDock__ApiToken` in legacy mode.
 
 Press Ctrl+C to stop the application services. Infrastructure containers remain running. After backend updates, rerun the launcher to apply migrations and restart the services.
 
@@ -66,7 +66,7 @@ ForgeDock runs on one host and uses PostgreSQL as its durable queue. See [the ar
 
 ## Project scope
 
-This is a personal home-server project built for a trusted operator. It is intended for self-hosting and learning, with a shared management token rather than individual user accounts. It does not isolate hostile builds or provide a managed hosting service.
+This is a personal home-server project built for a trusted operator. It is intended for self-hosting and learning, with optional allowlisted OpenID Connect SSO accounts or a legacy shared management token. SSO accounts currently have full operator access. It does not isolate hostile builds or provide a managed hosting service.
 
 Crash-time route reconciliation and stronger worker execution fencing remain areas for improvement. Read [the architecture review](docs/ARCHITECTURE_REVIEW.md) and [security notes](docs/SECURITY.md) before exposing an installation publicly.
 

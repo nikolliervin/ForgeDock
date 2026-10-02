@@ -2,17 +2,23 @@ import { useCallback } from 'react';
 import type { Api } from './types';
 import { useUI } from './ui';
 
-/** Keeps credentials in memory and centralizes response parsing, authentication expiry, and mutation feedback. */
+/** Centralizes session credentials, CSRF protection, authentication expiry, and mutation feedback. */
 export function useManagementApi(
   token: string,
   onAuthentication: (authenticated: boolean) => void,
+  csrfToken?: string,
 ): Api {
   const { notify } = useUI();
   const api = useCallback(
     async <T>(path: string, body?: unknown, method?: string): Promise<T> => {
       const response = await fetch('/api' + path, {
         method: method ?? (body === undefined ? 'GET' : 'POST'),
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          ...(token ? { Authorization: 'Bearer ' + token } : {}),
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+          'Content-Type': 'application/json',
+        },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       if (!response.ok) {
@@ -75,7 +81,7 @@ export function useManagementApi(
           ? ((await response.blob()) as T)
           : response.json();
     },
-    [token, onAuthentication, notify],
+    [token, csrfToken, onAuthentication, notify],
   );
   return api;
 }

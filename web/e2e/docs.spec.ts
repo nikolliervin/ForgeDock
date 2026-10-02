@@ -40,6 +40,7 @@ test('search, keyboard shortcut, history, and copy work', async ({ page, context
 });
 
 test('documentation preserves the dashboard session state', async ({ page }) => {
+  await page.route('**/api/auth/config', route => route.fulfill({ json: { mode: 'token' } }));
   await page.goto('/dashboard');
   const token = page.getByLabel('Management token');
   await token.fill('a-token-that-stays-in-memory');
@@ -94,16 +95,16 @@ test('desktop docs navigation stays at the left page edge', async ({ page }) => 
   await page.screenshot({ path: '../.runtime/screenshots/docs-left-navigation.png', fullPage: true });
 });
 
- test('homepage opens public documentation and dashboard remains accessible', async ({ page }) => {
+test('homepage opens sign-in and documentation remains accessible', async ({ page }) => {
+  await page.route('**/api/auth/config', route => route.fulfill({ json: { mode: 'token' } }));
   const apiRequests: string[] = [];
   page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url()); });
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('From repository');
-  await expect(page.getByLabel('Management token')).not.toBeVisible();
-  expect(apiRequests).toEqual([]);
-  await page.getByRole('link', { name: 'Open dashboard' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByLabel('Management token')).toBeVisible();
-  await page.goBack();
+  expect(apiRequests.every(url => new URL(url).pathname === '/api/auth/config')).toBe(true);
+  await page.getByRole('link', { name: /Documentation/ }).click();
+  await expect(page).toHaveURL(/\/docs$/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('From repository');
+  await page.goBack();
+  await expect(page.getByLabel('Management token')).toBeVisible();
 });

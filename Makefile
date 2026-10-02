@@ -1,4 +1,4 @@
-.PHONY: init infra migrate api worker web test build e2e compose docker-test railpack edge
+.PHONY: init infra migrate api worker web test build e2e compose docker-test railpack edge keycloak trust-local-sso
 init:
 	bash scripts/init-local.sh
 infra:
@@ -34,3 +34,9 @@ railpack:
 
 edge:
 	bash scripts/start-edge.sh
+
+keycloak:
+	bash scripts/start-keycloak-local.sh
+
+trust-local-sso:
+	bash scripts/trust-keycloak-local.sh

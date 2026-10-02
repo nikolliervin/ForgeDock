@@ -13,11 +13,6 @@ var connection =
     ?? throw new InvalidOperationException(
         "Set ConnectionStrings__ForgeDock to a PostgreSQL connection string."
     );
-var token = builder.Configuration["ForgeDock:ApiToken"];
-if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
-    throw new InvalidOperationException(
-        "Set ForgeDock__ApiToken to a random token of at least 32 characters."
-    );
 builder.Services.AddSingleton(
     new SecretProtector(
         builder.Configuration["ForgeDock:SecretKey"]
@@ -33,11 +28,11 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter())
 );
-builder
-    .Services.AddAuthentication("ManagementToken")
-    .AddScheme<AuthenticationSchemeOptions, ApiTokenHandler>("ManagementToken", _ => { });
+var sso = builder.AddManagementAuthentication();
 builder.Services.AddAuthorization();
 var app = builder.Build();
+if (sso)
+    app.UseForwardedHeaders();
 app.UseExceptionHandler();
 var webRoot = builder.Configuration["ForgeDock:WebRoot"];
 if (!string.IsNullOrWhiteSpace(webRoot) && Directory.Exists(webRoot))
@@ -62,8 +57,12 @@ if (!string.IsNullOrWhiteSpace(webRoot) && Directory.Exists(webRoot))
         .AllowAnonymous();
 }
 app.UseStatusCodePages();
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+if (sso)
+    app.Use(ManagementAuthentication.ValidateManagementCsrf);
+app.MapManagementAuthentication(sso);
 app.MapOpenApi().RequireAuthorization();
 app.MapGet("/health/live", () => Results.Ok(new { status = "alive" }));
 app.MapGet(
@@ -90,7 +89,20 @@ api.MapJobEndpoints();
 api.MapPreviewEndpoints();
 api.MapResourceEndpoints();
 api.MapTemplateEndpoints();
-api.MapGet("/session", () => new { name = "operator" });
+api.MapGet(
+    "/session",
+    (HttpContext context) =>
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        var csrf = sso
+            ? context
+                .RequestServices.GetRequiredService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>()
+                .GetAndStoreTokens(context)
+                .RequestToken
+            : null;
+        return Results.Ok(new { name = context.User.Identity?.Name, csrfToken = csrf });
+    }
+);
 api.MapProjectEndpoints();
 api.MapDeploymentEndpoints();
 api.MapProjectEnvironmentEndpoints();

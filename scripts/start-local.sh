@@ -15,6 +15,13 @@ fi
 
 make init
 make infra
+# Start the selected local identity provider before the API.
+set -a
+source .env
+set +a
+if [[ ${ForgeDock__Auth__Mode:-} == keycloak && ${ForgeDock__Keycloak__LocalEnabled:-false} == true ]]; then
+  bash scripts/start-keycloak-local.sh
+fi
 make edge
 make railpack
 make migrate
@@ -43,8 +50,8 @@ pids+=("$!")
 setsid npm --prefix web run dev &
 pids+=("$!")
 
-printf '\nStarting ForgeDock at http://127.0.0.1:5173/dashboard\n'
-echo 'Sign in with ForgeDock__ApiToken from .env. Press Ctrl+C to stop the app.'
+printf '\nStarting ForgeDock at %s/dashboard\n' "${ForgeDock__Oidc__PublicOrigin:-http://127.0.0.1:5173}"
+echo 'Sign in with your configured SSO provider (HTTPS required) or the legacy ForgeDock__ApiToken. See docs/SSO.md. Press Ctrl+C to stop the app.'
 echo 'Infrastructure containers stay running for the next launch.'
 
 status=0

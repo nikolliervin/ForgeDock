@@ -173,8 +173,66 @@ const articles: Article[] = [
               This release is designed for one trusted operator on a single Linux host. Local routes
               use HTTP and bind to your machine. Custom domains and automatic HTTPS are available
               when you configure a public server. Private GitHub repositories use a
-              server-configured access token. Team accounts are not included.
+              server-configured access token. Allowlisted OpenID Connect SSO accounts are available;
+              all approved accounts have full operator access.
             </Note>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: 'sso',
+    title: 'SSO authentication',
+    group: 'GETTING STARTED',
+    summary: 'Choose your login provider in .env.',
+    keywords:
+      'sso authentication oidc login passkeys security mfa keycloak entra auth0 okta authentik',
+    sections: [
+      {
+        id: 'configuration',
+        title: 'Local Keycloak',
+        content: (
+          <>
+            <p>
+              Run <code>make keycloak</code>, trust the local certificate with{' '}
+              <code>sudo bash scripts/trust-keycloak-local.sh</code>, then start the app. Open{' '}
+              <code>https://localhost:5443</code> and choose Sign in with SSO.
+            </p>
+            <p>
+              Use <code>ForgeDock__Keycloak__OperatorUsername</code> and{' '}
+              <code>OperatorPassword</code> from your private <code>.env</code>. Change the
+              temporary password and scan the QR code with a phone authenticator app. Set{' '}
+              <code>ForgeDock__Keycloak__SecondFactor</code> to <code>totp</code> for phone codes or{' '}
+              <code>webauthn</code> for FIDO2 security keys.
+            </p>
+            <Code language=".env">{`ForgeDock__Auth__Mode=keycloak
+ForgeDock__Keycloak__LocalEnabled=true
+ForgeDock__Oidc__Authority=https://localhost:8444/realms/forgedock
+ForgeDock__Oidc__PublicOrigin=https://localhost:5443
+ForgeDock__Oidc__ClientId=forgedock
+ForgeDock__Oidc__ClientSecret=your-client-secret
+ForgeDock__Oidc__AllowedSubjects__0=your-subject-id`}</Code>
+          </>
+        ),
+      },
+      {
+        id: 'providers',
+        title: 'Other providers and access',
+        content: (
+          <>
+            <p>
+              Set <code>Auth__Mode</code> to <code>oidc</code>, <code>entra</code>,{' '}
+              <code>auth0</code>, <code>okta</code>, or <code>authentik</code> and supply that
+              provider’s OIDC values. Register <code>PublicOrigin/api/auth/callback</code> and
+              enforce security-key MFA in the provider. The repository’s{' '}
+              <code>docs/AUTHENTICATION.md</code> lists issuer URLs and keys.
+            </p>
+            <p>
+              Add approved subject IDs with <code>AllowedSubjects__1</code>, etc. All approved users
+              have full access. Remove a subject and restart the API to revoke access. Sessions
+              expire after eight hours; sign out revokes the ForgeDock session.
+            </p>
           </>
         ),
       },
@@ -232,12 +290,13 @@ const articles: Article[] = [
               <a href="/dashboard" onClick={(event) => navigate(event, '/dashboard')}>
                 the dashboard
               </a>
-              . Open your local <code>.env</code> file and use the <code>ForgeDock__ApiToken</code>{' '}
-              value as your management token.
+              . If SSO is enabled, choose Sign in with SSO and use your approved identity provider
+              account. In legacy mode, use the <code>ForgeDock__ApiToken</code> value from your
+              private <code>.env</code>.
             </p>
             <p>
-              The token stays in browser memory for the current session. Documentation is available
-              without signing in.
+              SSO requires HTTPS and uses secure session cookies. Legacy tokens stay in browser
+              memory. Documentation is available without signing in.
             </p>
             <Link slug="first-deployment" className="docs-inline-link">
               Continue to your first deployment →
@@ -425,9 +484,9 @@ const articles: Article[] = [
             </p>
             <Note title="Temporary public address">
               No Cloudflare account or domain is required. This command temporarily exposes the API
-              service; management routes require your management token and webhooks verify their own
-              secret. Stop the tunnel when finished. If restarting it gives a different hostname,
-              update your GitHub webhook URL.
+              service; management routes require your SSO session or legacy management token and
+              webhooks verify their own secret. Stop the tunnel when finished. If restarting it
+              gives a different hostname, update your GitHub webhook URL.
             </Note>
           </>
         ),
