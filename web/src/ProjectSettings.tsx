@@ -71,9 +71,9 @@ export function ProjectSettings({
                 Branch
                 <input name="branch" defaultValue={project.branch} required />
               </label>
-              <DeploymentFields project={project} />
+              <DeploymentFields project={project} api={api} />
               <label>
-                Container port
+                Port inside the container
                 <input
                   name="port"
                   type="number"

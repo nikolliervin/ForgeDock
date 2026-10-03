@@ -1,3 +1,4 @@
+import './NewProject.css';
 import { useEffect, useState } from 'react';
 import { DeploymentFields, type DeploymentConfig } from './DeploymentFields';
 import { navigate } from './navigation';
@@ -67,7 +68,7 @@ export function NewProject({
         before creating the project.
       </p>
       <form
-        className="panel form"
+        className="form new-project-form"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -89,126 +90,143 @@ export function NewProject({
           });
         }}
       >
-        <label>
-          Project template
-          <select
-            aria-label="Project template"
-            value={selected}
-            onChange={(event) => {
-              setSelected(event.target.value);
-              setDatabase('');
-            }}
-          >
-            <option value="">Custom repository</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {error && <p role="alert">{error}</p>}
-        {template && (
-          <div className="template-note">
-            <p>{template.description}</p>
-            <button
-              className="secondary"
-              type="button"
-              disabled={downloading}
-              onClick={() => void download()}
-            >
-              Download starter ZIP
-            </button>
-            <p className="field-hint">
-              Starting from scratch? Download the files, push them to your own GitHub repository,
-              then paste its URL below. For existing apps, check that commands and endpoints match
-              your code.{' '}
-              <a
-                href="/docs/project-templates"
-                onClick={(event) => navigate(event, '/docs/project-templates')}
-              >
-                Template guide →
-              </a>
-            </p>
-          </div>
-        )}
-        <label>
-          Project name
-          <input name="name" required maxLength={100} placeholder="my-service" />
-        </label>
-        <label>
-          Repository URL
-          <input
-            name="repository"
-            type="url"
-            required
-            placeholder="https://github.com/you/service.git"
-          />
-        </label>
-        <label>
-          Branch
-          <input name="branch" required defaultValue="main" />
-        </label>
-        <fieldset key={selected} className="template-fields">
-          <DeploymentFields project={template} />
-          <div className="columns">
+        <div className="new-project-grid">
+          <section className="panel new-project-pane">
+            <div className="new-project-pane-heading">
+              <h3>Project & repository</h3>
+              <p>Choose the source for your application.</p>
+            </div>
             <label>
-              Container port
+              Project template
+              <select
+                aria-label="Project template"
+                value={selected}
+                onChange={(event) => {
+                  setSelected(event.target.value);
+                  setDatabase('');
+                }}
+              >
+                <option value="">Custom repository</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {error && <p role="alert">{error}</p>}
+            {template && (
+              <div className="template-note">
+                <p>{template.description}</p>
+                <button
+                  className="secondary"
+                  type="button"
+                  disabled={downloading}
+                  onClick={() => void download()}
+                >
+                  Download starter ZIP
+                </button>
+                <p className="field-hint">
+                  Starting from scratch? Download the files, push them to your own GitHub
+                  repository, then paste its URL below. For existing apps, check that commands and
+                  endpoints match your code.{' '}
+                  <a
+                    href="/docs/project-templates"
+                    onClick={(event) => navigate(event, '/docs/project-templates')}
+                  >
+                    Template guide →
+                  </a>
+                </p>
+              </div>
+            )}
+            <label>
+              Project name
+              <input name="name" required maxLength={100} placeholder="my-service" />
+            </label>
+            <label>
+              Repository URL
               <input
-                name="port"
-                type="number"
-                min={1}
-                max={65535}
+                name="repository"
+                type="url"
                 required
-                defaultValue={template?.containerPort ?? 8080}
+                placeholder="https://github.com/you/service.git"
               />
             </label>
             <label>
-              Health endpoint
-              <input name="health" required defaultValue={template?.healthPath ?? '/'} />
+              Branch
+              <input name="branch" required defaultValue="main" />
             </label>
-          </div>
-          <label>
-            Managed database
-            <select
-              aria-label="Managed database"
-              name="database"
-              value={database}
-              onChange={(event) => setDatabase(event.target.value)}
-            >
-              <option value="">None</option>
-              {databaseKinds.map((kind) => (
-                <option key={kind} value={kind}>
-                  {databaseNames[kind]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {database === 'SqlServer' && (
-            <>
-              <label className="checkbox-row">
-                <input name="sqlLicense" type="checkbox" required />I accept the{' '}
-                <a
-                  href="https://go.microsoft.com/fwlink/?LinkId=746388"
-                  target="_blank"
-                  rel="noreferrer"
+            <div className="new-project-database">
+              <label>
+                Managed database
+                <select
+                  aria-label="Managed database"
+                  name="database"
+                  value={database}
+                  onChange={(event) => setDatabase(event.target.value)}
                 >
-                  Microsoft SQL Server license terms
-                </a>
-                .
+                  <option value="">None</option>
+                  {databaseKinds.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {databaseNames[kind]}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <p className="field-hint">
-                Free SQL Server Express requires an x86-64 host and 2 GiB memory.
-              </p>
-            </>
-          )}
-          {template?.suggestedDatabase && (
-            <p className="field-hint">
-              {databaseNames[template.suggestedDatabase]} is a common choice for this stack. Adding
-              it creates persistent storage and an encrypted connection variable.
-            </p>
-          )}
-        </fieldset>
+              {database === 'SqlServer' && (
+                <>
+                  <label className="checkbox-row">
+                    <input name="sqlLicense" type="checkbox" required />I accept the{' '}
+                    <a
+                      href="https://go.microsoft.com/fwlink/?LinkId=746388"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Microsoft SQL Server license terms
+                    </a>
+                    .
+                  </label>
+                  <p className="field-hint">
+                    Free SQL Server Express requires an x86-64 host and 2 GiB memory.
+                  </p>
+                </>
+              )}
+              {template?.suggestedDatabase && (
+                <p className="field-hint">
+                  {databaseNames[template.suggestedDatabase]} is a common choice for this stack.
+                  Adding it creates persistent storage and an encrypted connection variable.
+                </p>
+              )}
+            </div>
+          </section>
+          <section className="panel new-project-pane">
+            <div className="new-project-pane-heading">
+              <h3>Deployment settings</h3>
+              <p>Review the engine's suggestions or configure your own build.</p>
+            </div>
+            <fieldset key={selected} className="template-fields">
+              <DeploymentFields project={template} api={api} detectDefaultBranch />
+              <div className="columns">
+                <label>
+                  Port inside the container
+                  <input
+                    name="port"
+                    type="number"
+                    min={1}
+                    max={65535}
+                    required
+                    defaultValue={template?.containerPort ?? 8080}
+                  />
+                </label>
+                <label>
+                  Health endpoint
+                  <input name="health" required defaultValue={template?.healthPath ?? '/'} />
+                </label>
+              </div>
+            </fieldset>
+          </section>
+        </div>
+
         <div className="actions">
           <button disabled={busy}>Create project</button>
           <button className="secondary" type="button" onClick={onCancel}>

@@ -1,0 +1,67 @@
+.form.new-project-form {
+  max-width: 1100px;
+  width: 100%;
+}
+.new-project-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 24px;
+  align-items: start;
+}
+.new-project-pane {
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 24px;
+}
+.new-project-pane-heading {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.new-project-pane-heading h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 15px;
+}
+.new-project-pane-heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.new-project-pane .template-fields {
+  min-width: 0;
+  margin: 0;
+}
+.new-project-database {
+  padding-top: 20px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.new-project-database > label:last-child {
+  margin-bottom: 0;
+}
+.new-project-form > .actions {
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.new-project-pane .configuration-checker {
+  margin-top: 0;
+}
+@media (max-width: 850px) {
+  .new-project-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+@media (max-width: 480px) {
+  .new-project-pane {
+    padding: 18px;
+  }
+  .new-project-pane .columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

@@ -212,9 +212,28 @@ public sealed partial class Worker
                 await db.SaveChangesAsync(ct);
             }
         }
-        catch (Exception)
+        catch (Exception failure)
             when (!ct.IsCancellationRequested && deployment.State != DeploymentState.Running)
         {
+            if (model is null)
+                await Log($"Deployment failed: {failure.Message}");
+            if (model is not null)
+            {
+                try
+                {
+                    await ComposeEngine.LogFailureDiagnosticsAsync(
+                        model,
+                        project.Id,
+                        Log,
+                        failure.Message,
+                        ct
+                    );
+                }
+                catch (Exception diagnostics) when (diagnostics is not OperationCanceledException)
+                {
+                    await Log("Could not collect container diagnostics before cleanup.");
+                }
+            }
             if (model is not null)
             {
                 try
